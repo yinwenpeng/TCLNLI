@@ -12,7 +12,8 @@ files.remove('splits.txt')
 print(len(files))
 
 for fil in files:
-    f = codecs.open(path+fil, 'r', 'utf-8')
+    # f = codecs.open(path+fil, 'r', 'utf-8')
+    f = open(path+fil)
     data = json.load(f)
     print(data["Title"])
     print(data["Prompt"])
