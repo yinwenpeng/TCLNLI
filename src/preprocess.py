@@ -16,6 +16,6 @@ print(len(data))
 # print(data["Positive examples"])
 # print(data["Negative Examples"])
 
-for (key, value) in data:
+for key, value in data.items():
     print(key)
 f.close()
