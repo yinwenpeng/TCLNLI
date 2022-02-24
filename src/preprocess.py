@@ -15,7 +15,16 @@ print(len(data))
 # print(data["Emphasis & Caution"])
 # print(data["Positive examples"])
 # print(data["Negative Examples"])
-
-for key, value in data.items():
-    print(key)
+'''
+Definition
+Prompt
+Title
+Emphasis & Caution
+Instances
+Examples
+Things to Avoid
+'''
+# for key, value in data.items():
+#     print(key)
+print(data["Examples"])
 f.close()
