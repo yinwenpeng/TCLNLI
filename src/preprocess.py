@@ -17,7 +17,7 @@ for fil in files:
     data = json.load(f)
     print(data["Title"])
     print(data["Prompt"])
-    print(data["Definition"])
+    print(data["Definition"].encode('utf-8'))
 
     print(data["Things to Avoid"])
     print(data["Emphasis & Caution"])
