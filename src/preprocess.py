@@ -5,21 +5,31 @@
 import json
 import os
 
-files = set(os.listdir("/home/tup51337/dataset/Natural-Instructions/"))
+path = '/home/tup51337/dataset/Natural-Instructions/'
+files = set(os.listdir(path))
 files.remove('splits.txt')
 print(len(files))
 
-# f = open('/home/tup51337/dataset/Natural-Instructions/subtask001_quoref_question_generation.json')
-# data = json.load(f)
-# print(len(data))
-# print(data["Title"])
-# print(data["Prompt"])
-# print(data["Definition"])
-#
-# print(data["Things to Avoid"])
-# print(data["Emphasis & Caution"])
-# print(data["Positive examples"])
-# print(data["Negative Examples"])
+for fil in files:
+f = open(path+fil, 'r', 'utf-8')
+data = json.load(f)
+print(data["Title"])
+print(data["Prompt"])
+print(data["Definition"])
+
+print(data["Things to Avoid"])
+print(data["Emphasis & Caution"])
+
+# for ex in enumerate(data["Examples"]["Positive Examples"]):
+#     for key, value in ex.items():
+#         print(key)
+# for ex in enumerate(data["Examples"]["Negative Examples"]):
+#     for key, value in ex.items():
+#         print(key)
+
+for id, instance in enumerate(data["Instances"]):
+    for key, value in instance.items():
+        print(key)
 '''
 Definition
 Prompt
