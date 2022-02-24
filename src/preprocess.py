@@ -27,7 +27,7 @@ Things to Avoid
 # for key, value in data.items():
 #     print(key)
 # print(data["Examples"])
-for id, pair in emuerate(data["Examples"]["Negative Examples"]):
+for id, pair in enumerate(data["Examples"]["Negative Examples"]):
     print(id+'....\n')
     for key, value in pair.items():
         print(key)
