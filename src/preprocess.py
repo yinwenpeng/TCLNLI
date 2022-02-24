@@ -27,6 +27,6 @@ Things to Avoid
 # for key, value in data.items():
 #     print(key)
 # print(data["Examples"])
-for key, value in data["Examples"].items():
+for key, value in data["Examples"]["Negative Examples"].items():
     print(key)
 f.close()
