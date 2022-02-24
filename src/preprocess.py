@@ -11,39 +11,24 @@ files.remove('splits.txt')
 print(len(files))
 
 for fil in files:
-f = open(path+fil, 'r', 'utf-8')
-data = json.load(f)
-print(data["Title"])
-print(data["Prompt"])
-print(data["Definition"])
+    f = open(path+fil, 'r', 'utf-8')
+    data = json.load(f)
+    print(data["Title"])
+    print(data["Prompt"])
+    print(data["Definition"])
 
-print(data["Things to Avoid"])
-print(data["Emphasis & Caution"])
+    print(data["Things to Avoid"])
+    print(data["Emphasis & Caution"])
 
-# for ex in enumerate(data["Examples"]["Positive Examples"]):
-#     for key, value in ex.items():
-#         print(key)
-# for ex in enumerate(data["Examples"]["Negative Examples"]):
-#     for key, value in ex.items():
-#         print(key)
+    # for ex in enumerate(data["Examples"]["Positive Examples"]):
+    #     for key, value in ex.items():
+    #         print(key)
+    # for ex in enumerate(data["Examples"]["Negative Examples"]):
+    #     for key, value in ex.items():
+    #         print(key)
 
-for id, instance in enumerate(data["Instances"]):
-    for key, value in instance.items():
-        print(key)
-'''
-Definition
-Prompt
-Title
-Emphasis & Caution
-Instances
-Examples
-Things to Avoid
-'''
-# for key, value in data.items():
-#     print(key)
-# print(data["Examples"])
-# for id, pair in enumerate(data["Examples"]["Negative Examples"]):
-#     print(id, '....')
-#     for key, value in pair.items():
-#         print(key)
-# f.close()
+    for id, instance in enumerate(data["Instances"]):
+        for key, value in instance.items():
+            print(key)
+
+    f.close()
