@@ -4,6 +4,7 @@
 '''
 import json
 import os
+import codecs
 
 path = '/home/tup51337/dataset/Natural-Instructions/'
 files = set(os.listdir(path))
@@ -11,7 +12,7 @@ files.remove('splits.txt')
 print(len(files))
 
 for fil in files:
-    f = open(path+fil, 'r', 'utf-8')
+    f = codecs.open(path+fil, 'r', 'utf-8')
     data = json.load(f)
     print(data["Title"])
     print(data["Prompt"])
