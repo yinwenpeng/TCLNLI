@@ -26,5 +26,7 @@ Things to Avoid
 '''
 # for key, value in data.items():
 #     print(key)
-print(data["Examples"])
+# print(data["Examples"])
+for key, value in data["Examples"].items():
+    print(key)
 f.close()
