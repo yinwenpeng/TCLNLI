@@ -6,8 +6,8 @@ import json
 import os
 
 files = os.listdir("/home/tup51337/dataset/Natural-Instructions/")
-for f in files:
-	print(f)
+task_file_list = set(files).remove('splits.txt')
+print(len(task_file_list))
 
 # f = open('/home/tup51337/dataset/Natural-Instructions/subtask001_quoref_question_generation.json')
 # data = json.load(f)
