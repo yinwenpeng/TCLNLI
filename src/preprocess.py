@@ -13,6 +13,6 @@ print(data["Definition"])
 
 print(data["Things to Avoid"])
 print(data["Emphasis & Caution"])
-print(data["Positive Examples"])
+print(data["Positive examples"])
 print(data["Negative Examples"])
 f.close()
