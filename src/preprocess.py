@@ -7,12 +7,15 @@ import json
 f = open('/home/tup51337/dataset/Natural-Instructions/subtask001_quoref_question_generation.json')
 data = json.load(f)
 print(len(data))
-print(data["Title"])
-print(data["Prompt"])
-print(data["Definition"])
+# print(data["Title"])
+# print(data["Prompt"])
+# print(data["Definition"])
+#
+# print(data["Things to Avoid"])
+# print(data["Emphasis & Caution"])
+# print(data["Positive examples"])
+# print(data["Negative Examples"])
 
-print(data["Things to Avoid"])
-print(data["Emphasis & Caution"])
-print(data["Positive examples"])
-print(data["Negative Examples"])
+for key, value in data:
+    print(key)
 f.close()
