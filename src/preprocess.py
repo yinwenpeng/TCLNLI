@@ -28,7 +28,7 @@ Things to Avoid
 #     print(key)
 # print(data["Examples"])
 for id, pair in enumerate(data["Examples"]["Negative Examples"]):
-    print(id+'....\n')
+    print(id, '....')
     for key, value in pair.items():
         print(key)
 f.close()
