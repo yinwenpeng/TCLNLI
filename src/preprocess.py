@@ -32,3 +32,6 @@ def load_a_single_file(fil):
             exit(0)
 
     f.close()
+
+if __name__ == '__main__':
+    load_a_single_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
