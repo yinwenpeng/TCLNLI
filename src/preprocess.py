@@ -29,7 +29,7 @@ def load_a_single_file(fil):
     for id, instance in enumerate(data["Instances"]):
         for key, value in instance.items():
             print(key, ' --> ', value)
-            exit(0)
+        exit(0)
 
     f.close()
 
