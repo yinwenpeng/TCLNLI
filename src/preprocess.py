@@ -12,12 +12,12 @@ def load_a_single_file(fil):
     # f = codecs.open(path+fil, 'r', 'utf-8')
     f = open(fil)
     data = json.load(f)
-    print(data["Title"])
-    print(data["Prompt"])
-    print(data["Definition"].encode('utf-8'))
+    print('Title: ', data["Title"])
+    print('Prompt: ', data["Prompt"])
+    print('Definition: ', data["Definition"].encode('utf-8'))
 
-    print(data["Things to Avoid"])
-    print(data["Emphasis & Caution"])
+    print('Things to Avoid: ', data["Things to Avoid"])
+    print('Emphasis & Caution: ', data["Emphasis & Caution"])
 
     # for ex in enumerate(data["Examples"]["Positive Examples"]):
     #     for key, value in ex.items():
