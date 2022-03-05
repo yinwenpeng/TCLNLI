@@ -3,6 +3,7 @@ import json
 import os
 import codecs
 import jsonlines
+import csv
 
 path = '/home/tup51337/dataset/Natural-Instructions/'
 files = set(os.listdir(path))
@@ -35,12 +36,21 @@ def load_a_single_file(fil):
     f.close()
 
 def MNLI_2_csvformat(filename):
-    with jsonlines.open(filename) as f:
-        for line in f.iter():
-            print(line['gold_label'])
-            print(line['sentence1'])
-            print(line['sentence2'])
-            exit(0)
+    prefix = filename[:filename.find('.jsonl')]
+    csvfile_name = prefix+'.csv'
+    with open(csvfile_name, 'w', newline='') as csvfile:
+        fieldnames = ['premise', 'hypothesis', 'label']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+
+
+        with jsonlines.open(filename) as f:
+            for line in f.iter():
+                writer.writerow({'premise': line['sentence1'].strip(), 'hypothesis': line['sentence2'].strip(), 'label': line['gold_label'].strip()})
+        f.close()
+    csvfile.close()
+    print('write over')
 
 if __name__ == '__main__':
     # load_a_single_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
