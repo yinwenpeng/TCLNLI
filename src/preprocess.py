@@ -37,7 +37,7 @@ def load_a_single_json_file(fil):
     print('title_str:', title_str)
     prompt_str = data["Prompt"].strip()
     print('prompt_str:', prompt_str)
-    def_str = data["Definition"].encode('utf-8').strip()
+    def_str = str(data["Definition"].encode('utf-8')).strip()
     print('def_str:', def_str)
     avoid_str = data["Things to Avoid"].strip()
     print('avoid_str:', avoid_str)
