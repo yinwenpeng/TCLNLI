@@ -118,4 +118,5 @@ def convert_data_into_csv(input_folder, output_folder, overall_output_file_name=
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
     # MNLI_2_csvformat('/home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.jsonl')
-    convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv')
+    # convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv')
+    convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv', None)
