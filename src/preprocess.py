@@ -45,7 +45,7 @@ def MNLI_2_csvformat(filename):
 
 
 
-        with jsonlines.open(filename) as f:
+        with jsonlines.open(filename, 'r', 'utf-8') as f:
             for line in f.iter():
                 writer.writerow({'premise': line['sentence1'].strip(), 'hypothesis': line['sentence2'].strip(), 'label': line['gold_label'].strip()})
         f.close()
