@@ -51,19 +51,31 @@ def load_a_single_json_file(fil):
         for key, value in ex.items():
             POS+='['+key.strip()+'] '+value.strip()+' '
     INSTRUCTION+=POS
-    print('INSTRUCTION-->:', INSTRUCTION)
+
     # for ex in enumerate(data["Examples"]["Negative Examples"]):
     #     for key, value in ex.items():
     #         print(key)
 
     print('INSTRUCTION:', INSTRUCTION)
     '''instances'''
+    returned_tuple_list = []
     for id, instance in enumerate(data["Instances"]):
+        input = ''
+        output = ''
         for key, value in instance.items():
-            print(key, ' --> ', value)
+            if key.strip() != 'output':
+                input+='['+key+'] '+value.strip()+' '
+            else:
+                output = value.strip()
+        X = INSTRUCTION+' '+input.strip()
+        Y = output
+        print('X: ', X)
+        print('Y: ', Y)
         exit(0)
+        returned_tuple_list.append((X, Y))
 
     f.close()
+    return returned_tuple_list
 
 def convert_data_inito_csv(folder):
     #for each file in the folder, convert to csv file with two columns (input, output)
