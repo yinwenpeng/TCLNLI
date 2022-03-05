@@ -112,11 +112,35 @@ def convert_data_into_csv(input_folder, output_folder, overall_output_file_name=
     print('Done!')
 
 
+def merge_test_tasks_into_one_category(path, filelist, output_file):
+    csvfile = codecs.open(path+output_file, 'w', 'utf-8')
+    fieldnames = ['input', 'output']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+
+    for single_fil in filelist:
+        read_fil = codecs.open(path+single_fil, 'r', 'utf-8'):
+        read_file = csv.DictReader(read_fil)
+        for row in read_file:
+            dict_row = dict(row)
+            writer.writerow({'input': dict_row['input'].strip(), 'output': dict_row['output'].strip()})
+        read_fil.close()
+    csvfile.close()
+    print('merge over')
+
+
 
 
 
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
     # MNLI_2_csvformat('/home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.jsonl')
-    convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv')
-    convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv', None)
+    # convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv')
+    # convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv', None)
+    test_csv_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'
+    merge_test_tasks_into_one_category(test_csv_path, ['subtask002_quoref_answer_generation.csv', 'subtask033_winogrande_answer_generation.csv'], 'AG.csv')
+    merge_test_tasks_into_one_category(test_csv_path, ['subtask003_mctaco_question_generation_event_duration.csv', 'subtask040_qasc_question_generation.csv'], 'QG.csv')
+    merge_test_tasks_into_one_category(test_csv_path, ['subtask005_mctaco_wrong_answer_generation_event_duration.csv', 'subtask008_mctaco_wrong_answer_generation_transient_stationary.csv'], 'IAG.csv')
+    merge_test_tasks_into_one_category(test_csv_path, ['subtask022_cosmosqa_passage_inappropriate_binary.csv', 'subtask052_multirc_identify_bad_question.csv'], 'CF.csv')
+    merge_test_tasks_into_one_category(test_csv_path, ['subtask034_winogrande_question_modification_object.csv', 'subtask045_miscellaneous_sentence_paraphrasing.csv'], 'MM.csv')
+    merge_test_tasks_into_one_category(test_csv_path, ['subtask039_qasc_find_overlapping_words.csv', 'subtask044_essential_terms_identifying_essential_words.csv'], 'VF.csv')
