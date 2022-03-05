@@ -34,10 +34,15 @@ def load_a_single_json_file(fil):
     data = json.load(f)
 
     title_str = data["Title"].strip()
+    print('title_str:', title_str)
     prompt_str = data["Prompt"].strip()
+    print('prompt_str:', prompt_str)
     def_str = data["Definition"].encode('utf-8').strip()
+    print('def_str:', def_str)
     avoid_str = data["Things to Avoid"].strip()
+    print('avoid_str:', avoid_str)
     caution_str = data["Emphasis & Caution"].strip()
+    print('caution_str:', caution_str)
     INSTRUCTION = '[Title] '+title_str+' [Prompt] '+prompt_str+' [Definition] '+def_str+' [Avoid] '+avoid_str+' [Caution] '+caution_str
 
     POS = ''
