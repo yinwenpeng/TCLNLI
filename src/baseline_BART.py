@@ -697,7 +697,6 @@ if __name__ == "__main__":
 
 
 '''
-CUDA_VISIBLE_DEVICES=1 python -u baseline_BART.py --model_name_or_path facebook/bart-base --do_train --do_eval --do_predict --train_file /home/tup51337/dataset/MNLI/multinli_1.0_train.csv --max_train_samples 1000 --validation_file /home/tup51337/dataset/MNLI/multinli_1.0_dev_matched.csv --max_eval_samples 1000 --test_file /home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.csv --max_predict_samples 100 --output_dir /home/tup51337/tmp/tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4 --overwrite_output_dir --predict_with_generate
 
-CUDA_VISIBLE_DEVICES=2 python -u baseline_BART.py --model_name_or_path facebook/bart-base --do_train --do_predict --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --max_train_samples 1000 --test_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/dataset/Natural-Instructions/system_output/baseline_BART --per_device_train_batch_size=4 --per_device_eval_batch_size=40 --overwrite_output_dir --predict_with_generate
+CUDA_VISIBLE_DEVICES=1,2 python -u baseline_BART.py --model_name_or_path facebook/bart-base --do_train --do_predict --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --test_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/dataset/Natural-Instructions/system_output/baseline_BART --per_device_train_batch_size=6 --per_device_eval_batch_size=10 --overwrite_output_dir --predict_with_generate --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
 '''
