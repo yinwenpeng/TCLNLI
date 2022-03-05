@@ -51,6 +51,7 @@ def load_a_single_json_file(fil):
         for key, value in ex.items():
             POS+='['+key.strip()+'] '+value.strip()+' '
     INSTRUCTION+=POS
+    print('INSTRUCTION-->:', INSTRUCTION)
     # for ex in enumerate(data["Examples"]["Negative Examples"]):
     #     for key, value in ex.items():
     #         print(key)
