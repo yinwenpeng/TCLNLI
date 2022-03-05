@@ -63,6 +63,7 @@ def load_a_single_json_file(fil):
         input = ''
         output = ''
         for key, value in instance.items():
+            print('key: ', key)
             if key.strip() != 'output':
                 input+='['+key+'] '+value.strip()+' '
             else:
