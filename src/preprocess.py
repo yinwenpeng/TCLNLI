@@ -66,7 +66,7 @@ def load_a_single_json_file(fil):
             if key.strip() != 'output':
                 input+='['+key+'] '+value.strip()+' '
             else:
-                output = value.strip()
+                output = ' '.join(value).strip()
         X = INSTRUCTION+' '+input.strip()
         Y = output
         print('X: ', X)
