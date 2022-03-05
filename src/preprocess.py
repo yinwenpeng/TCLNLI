@@ -34,15 +34,15 @@ def load_a_single_json_file(fil):
     data = json.load(f)
 
     title_str = data["Title"].strip()
-    print('title_str:', title_str)
+    # print('title_str:', title_str)
     prompt_str = data["Prompt"].strip()
-    print('prompt_str:', prompt_str)
+    # print('prompt_str:', prompt_str)
     def_str = data["Definition"].encode('utf-8').decode('utf-8').strip()
-    print('def_str:', def_str)
+    # print('def_str:', def_str)
     avoid_str = data["Things to Avoid"].strip()
-    print('avoid_str:', avoid_str)
+    # print('avoid_str:', avoid_str)
     caution_str = data["Emphasis & Caution"].strip()
-    print('caution_str:', caution_str)
+    # print('caution_str:', caution_str)
     INSTRUCTION = '[Title] '+title_str+' [Prompt] '+prompt_str+' [Definition] '+def_str+' [Avoid] '+avoid_str+' [Caution] '+caution_str
 
     POS = ''
@@ -56,40 +56,57 @@ def load_a_single_json_file(fil):
     #     for key, value in ex.items():
     #         print(key)
 
-    print('INSTRUCTION:', INSTRUCTION)
+    # print('INSTRUCTION:', INSTRUCTION)
     '''instances'''
     returned_tuple_list = []
     for id, instance in enumerate(data["Instances"]):
         input = ''
         output = ''
         for key, value in instance.items():
-            print('key: ', key)
-            print('value: ', value)
+            # print('key: ', key)
+            # print('value: ', value)
             if key.strip() != 'output':
                 input+='['+key+'] '+value.strip()+' '
             else:
                 output = ' '.join(value).strip()
-        X = INSTRUCTION+' '+input.strip()
+        '''put input at the beginning of the long instruction text'''
+        X = input.strip()+' '+INSTRUCTION
         Y = output
-        print('X: ', X)
-        print('Y: ', Y)
-        exit(0)
+        # print('X: ', X)
+        # print('Y: ', Y)
+        # exit(0)
         returned_tuple_list.append((X, Y))
 
     f.close()
     return returned_tuple_list
 
-def convert_data_inito_csv(folder):
+def convert_data_into_csv(input_folder, output_folder):
     #for each file in the folder, convert to csv file with two columns (input, output)
 
-    file_set = set(os.listdir(folder))
+    file_set = set(os.listdir(input_folder))
     for fil in file_set:
         prefix = fil[:fil.find('.json')]
+        prefix = prefix[prefix.rfind('/')+1:]
         csvfile_name = prefix+'.csv'
+        write_csv_filename = output_folder+'/'+csvfile_name
+        csvfile = codecs.open(write_csv_filename, 'w', 'utf-8')
+        fieldnames = ['input', 'output']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+
+        pair_list = load_a_single_json_file(fil)
+        for pair in pair_list:
+            writer.writerow({'input': pair[0].strip(), 'output': pair[1].strip()})
+        csvfile.close()
+        print(fil, ' convert over...')
+    print('Done!')
+
 
 
 
 
 if __name__ == '__main__':
-    load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
+    # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
     # MNLI_2_csvformat('/home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.jsonl')
+    convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_csv')
