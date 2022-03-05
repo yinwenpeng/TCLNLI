@@ -39,7 +39,7 @@ def load_a_single_json_file(fil):
     avoid_str = data["Things to Avoid"].strip()
     caution_str = data["Emphasis & Caution"].strip()
 
-    for ex in enumerate(data["Examples"]["Positive Examples"]):
+    for id, ex in enumerate(data["Examples"]["Positive Examples"]):
         for key, value in ex.items():
             print(key)
         exit(0)
