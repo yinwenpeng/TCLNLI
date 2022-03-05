@@ -697,6 +697,5 @@ if __name__ == "__main__":
 
 
 '''
-
-CUDA_VISIBLE_DEVICES=1,2 python -u baseline_BART.py --model_name_or_path facebook/bart-base --do_train --do_predict --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --test_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/dataset/Natural-Instructions/system_output/baseline_BART --per_device_train_batch_size=6 --per_device_eval_batch_size=10 --overwrite_output_dir --predict_with_generate --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
+CUDA_VISIBLE_DEVICES=1,2 python -u baseline_BART.py --model_name_or_path facebook/bart-base --do_train --do_predict --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --test_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/dataset/Natural-Instructions/system_output/baseline_BART --per_device_train_batch_size=7 --per_device_eval_batch_size=16 --overwrite_output_dir --predict_with_generate --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
 '''
