@@ -695,6 +695,7 @@ def _mp_fn(index):
 if __name__ == "__main__":
     main()
 
+
 '''
-CUDA_VISIBLE_DEVICES=1 python -u baseline_BART.py --model_name_or_path bart-base --do_train --do_eval --train_file /home/tup51337/dataset/MNLI/multinli_1.0_train.csv --validation_file /home/tup51337/dataset/MNLI/multinli_1.0_dev_matched.csv --test_file /home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.csv --output_dir /home/tup51337/tmp/tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4 --overwrite_output_dir --predict_with_generate
+CUDA_VISIBLE_DEVICES=1 python -u baseline_BART.py --model_name_or_path facebook/bart-base --do_train --do_eval --do_predict --train_file /home/tup51337/dataset/MNLI/multinli_1.0_train.csv --max_train_samples 1000 --validation_file /home/tup51337/dataset/MNLI/multinli_1.0_dev_matched.csv --max_eval_samples 1000 --test_file /home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.csv --max_predict_samples 100 --output_dir /home/tup51337/tmp/tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4 --overwrite_output_dir --predict_with_generate
 '''
