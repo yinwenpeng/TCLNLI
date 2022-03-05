@@ -119,7 +119,7 @@ def merge_test_tasks_into_one_category(path, filelist, output_file):
     writer.writeheader()
 
     for single_fil in filelist:
-        read_fil = codecs.open(path+single_fil, 'r', 'utf-8'):
+        read_fil = codecs.open(path+single_fil, 'r', 'utf-8')
         read_file = csv.DictReader(read_fil)
         for row in read_file:
             dict_row = dict(row)
