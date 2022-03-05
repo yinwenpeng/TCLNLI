@@ -86,7 +86,6 @@ def convert_data_into_csv(input_folder, output_folder):
     file_set = set(os.listdir(input_folder))
     for fil in file_set:
         prefix = fil[:fil.find('.json')]
-        prefix = prefix[prefix.rfind('/')+1:]
         csvfile_name = prefix+'.csv'
         write_csv_filename = output_folder+'/'+csvfile_name
         csvfile = codecs.open(write_csv_filename, 'w', 'utf-8')
@@ -95,7 +94,7 @@ def convert_data_into_csv(input_folder, output_folder):
         writer.writeheader()
 
 
-        pair_list = load_a_single_json_file(fil)
+        pair_list = load_a_single_json_file(input_folder+'/'+fil)
         for pair in pair_list:
             writer.writerow({'input': pair[0].strip(), 'output': pair[1].strip()})
         csvfile.close()
