@@ -70,7 +70,7 @@ def load_a_single_json_file(fil):
             else:
                 output = ' '.join(value).strip()
         '''put input at the beginning of the long instruction text'''
-        X = input.strip()+' '+INSTRUCTION
+        X = input.replace('\n', ' ').strip()+' '+INSTRUCTION
         Y = output
         # print('X: ', X)
         # print('Y: ', Y)
