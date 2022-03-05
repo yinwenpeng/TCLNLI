@@ -5,35 +5,9 @@ import codecs
 import jsonlines
 import csv
 
-path = '/home/tup51337/dataset/Natural-Instructions/'
-files = set(os.listdir(path))
-files.remove('splits.txt')
-print(len(files))
 
-def load_a_single_file(fil):
-    # f = codecs.open(path+fil, 'r', 'utf-8')
-    f = open(fil)
-    data = json.load(f)
-    print('Title: ', data["Title"])
-    print('Prompt: ', data["Prompt"])
-    print('Definition: ', data["Definition"].encode('utf-8'))
 
-    print('Things to Avoid: ', data["Things to Avoid"])
-    print('Emphasis & Caution: ', data["Emphasis & Caution"])
 
-    # for ex in enumerate(data["Examples"]["Positive Examples"]):
-    #     for key, value in ex.items():
-    #         print(key)
-    # for ex in enumerate(data["Examples"]["Negative Examples"]):
-    #     for key, value in ex.items():
-    #         print(key)
-
-    for id, instance in enumerate(data["Instances"]):
-        for key, value in instance.items():
-            print(key, ' --> ', value)
-        exit(0)
-
-    f.close()
 
 def MNLI_2_csvformat(filename):
     prefix = filename[:filename.find('.jsonl')]
@@ -53,6 +27,45 @@ def MNLI_2_csvformat(filename):
     csvfile.close()
     print('write over')
 
+
+def load_a_single_json_file(fil):
+    # f = codecs.open(path+fil, 'r', 'utf-8')
+    f = open(fil)
+    data = json.load(f)
+
+    title_str = data["Title"].strip()
+    prompt_str = data["Prompt"].strip()
+    def_str = data["Definition"].encode('utf-8').strip()
+    avoid_str = data["Things to Avoid"].strip()
+    caution_str = data["Emphasis & Caution"].strip()
+
+    for ex in enumerate(data["Examples"]["Positive Examples"]):
+        for key, value in ex.items():
+            print(key)
+        exit(0)
+    # for ex in enumerate(data["Examples"]["Negative Examples"]):
+    #     for key, value in ex.items():
+    #         print(key)
+
+    '''instances'''
+    for id, instance in enumerate(data["Instances"]):
+        for key, value in instance.items():
+            print(key, ' --> ', value)
+        exit(0)
+
+    f.close()
+
+def convert_data_inito_csv(folder):
+    #for each file in the folder, convert to csv file with two columns (input, output)
+
+    file_set = set(os.listdir(folder))
+    for fil in file_set:
+        prefix = fil[:fil.find('.json')]
+        csvfile_name = prefix+'.csv'
+
+
+
+
 if __name__ == '__main__':
-    # load_a_single_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
-    MNLI_2_csvformat('/home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.jsonl')
+    load_a_single_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
+    # MNLI_2_csvformat('/home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.jsonl')
