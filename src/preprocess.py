@@ -80,8 +80,14 @@ def load_a_single_json_file(fil):
     f.close()
     return returned_tuple_list
 
-def convert_data_into_csv(input_folder, output_folder):
+def convert_data_into_csv(input_folder, output_folder, overall_output_file_name=None):
     #for each file in the folder, convert to csv file with two columns (input, output)
+
+    if overall_output_file_name is not None:
+        overall_csvfile = codecs.open(overall_output_file_name, 'w', 'utf-8')
+        fieldnames = ['input', 'output']
+        overall_writer = csv.DictWriter(overall_csvfile, fieldnames=fieldnames)
+        overall_writer.writeheader()
 
     file_set = set(os.listdir(input_folder))
     for fil in file_set:
@@ -97,8 +103,12 @@ def convert_data_into_csv(input_folder, output_folder):
         pair_list = load_a_single_json_file(input_folder+'/'+fil)
         for pair in pair_list:
             writer.writerow({'input': pair[0].strip(), 'output': pair[1].strip()})
+            if overall_output_file_name is not None:
+                overall_writer.writerow({'input': pair[0].strip(), 'output': pair[1].strip()})
         csvfile.close()
         print(fil, ' convert over...')
+    if overall_output_file_name is not None:
+        overall_csvfile.close()
     print('Done!')
 
 
@@ -108,4 +118,4 @@ def convert_data_into_csv(input_folder, output_folder):
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
     # MNLI_2_csvformat('/home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.jsonl')
-    convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_csv')
+    convert_data_into_csv('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv')
