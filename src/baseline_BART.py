@@ -52,7 +52,7 @@ from transformers.utils.versions import require_version
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
-check_min_version("4.18.0.dev0")
+# check_min_version("4.18.0.dev0")
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
 
@@ -696,5 +696,5 @@ if __name__ == "__main__":
     main()
 
 '''
-CUDA_VISIBLE_DEVICES=1 python -u examples/pytorch/summarization/run_summarization.py --model_name_or_path bart-base --do_train --do_eval --train_file cnn_dailymail --validation_file --test_file --output_dir /tmp/tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4 --overwrite_output_dir --predict_with_generate
+CUDA_VISIBLE_DEVICES=1 python -u baseline_BART.py --model_name_or_path bart-base --do_train --do_eval --train_file /home/tup51337/dataset/MNLI/multinli_1.0_train.csv --validation_file /home/tup51337/dataset/MNLI/multinli_1.0_dev_matched.csv --test_file /home/tup51337/dataset/MNLI/multinli_1.0_dev_mismatched.csv --output_dir /home/tup51337/tmp/tst-summarization --per_device_train_batch_size=4 --per_device_eval_batch_size=4 --overwrite_output_dir --predict_with_generate
 '''
