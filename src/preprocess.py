@@ -38,14 +38,14 @@ def load_a_single_file(fil):
 def MNLI_2_csvformat(filename):
     prefix = filename[:filename.find('.jsonl')]
     csvfile_name = prefix+'.csv'
-    with open(csvfile_name, 'w', newline='') as csvfile:
+    with open(csvfile_name, 'w', 'utf-8', newline='') as csvfile:
         fieldnames = ['premise', 'hypothesis', 'label']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
 
 
-        with jsonlines.open(filename, 'r', 'utf-8') as f:
+        with jsonlines.open(filename) as f:
             for line in f.iter():
                 writer.writerow({'premise': line['sentence1'].strip(), 'hypothesis': line['sentence2'].strip(), 'label': line['gold_label'].strip()})
         f.close()
