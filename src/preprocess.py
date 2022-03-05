@@ -38,15 +38,19 @@ def load_a_single_json_file(fil):
     def_str = data["Definition"].encode('utf-8').strip()
     avoid_str = data["Things to Avoid"].strip()
     caution_str = data["Emphasis & Caution"].strip()
+    INSTRUCTION = '[Title] '+title_str+' [Prompt] '+prompt_str+' [Definition] '+def_str+' [Avoid] '+avoid_str+' [Caution] '+caution_str
 
+    POS = ''
     for id, ex in enumerate(data["Examples"]["Positive Examples"]):
+        POS+='[POS'+str(id+1)+'] '
         for key, value in ex.items():
-            print(key)
-        exit(0)
+            POS+='['+key.strip()+'] '+value.strip()+' '
+    INSTRUCTION+=POS
     # for ex in enumerate(data["Examples"]["Negative Examples"]):
     #     for key, value in ex.items():
     #         print(key)
 
+    print('INSTRUCTION:', INSTRUCTION)
     '''instances'''
     for id, instance in enumerate(data["Instances"]):
         for key, value in instance.items():
