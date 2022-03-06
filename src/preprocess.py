@@ -153,12 +153,9 @@ def generate_training_examples_from_instruction(input_folder, output_folder):
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
-
-        # _, _, POS_ex_tuple_list = load_instruction_from_json_data(input_folder+'/'+fil)
-        INSTRUCTION_text, POS_ex, POS_ex_tuple_list = load_instruction_from_json_data(input_folder+'/'+fil)
-        # training_examples = []
+        INSTRUCTION_text, POS_ex_2_text, POS_ex_tuple_list = load_instruction_from_json_data(input_folder+'/'+fil)
         for tuple in POS_ex_tuple_list:
-            X = tuple[0]+' '+INSTRUCTION_text+' '+POS_ex
+            X = tuple[0]+' '+INSTRUCTION_text+' '+POS_ex_2_text
             Y = tuple[1]
             writer.writerow({'input': X.strip(), 'output': Y.strip()})
         csvfile.close()
