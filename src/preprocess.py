@@ -179,4 +179,4 @@ if __name__ == '__main__':
     # merge_test_tasks_into_one_category(test_csv_path, ['subtask034_winogrande_question_modification_object.csv', 'subtask045_miscellaneous_sentence_paraphrasing.csv'], 'MM.csv')
     # merge_test_tasks_into_one_category(test_csv_path, ['subtask039_qasc_find_overlapping_words.csv', 'subtask044_essential_terms_identifying_essential_words.csv'], 'VF.csv')
 
-    generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv', None)
+    generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv')
