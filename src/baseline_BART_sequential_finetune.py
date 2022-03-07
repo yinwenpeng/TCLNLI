@@ -610,15 +610,15 @@ def main():
                     trainer.log_metrics("predict", metrics)
                     trainer.save_metrics("predict", metrics)
 
-                    if trainer.is_world_process_zero():
-                        if training_args.predict_with_generate:
-                            predictions = tokenizer.batch_decode(
-                                predict_results.predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
-                            )
-                            predictions = [pred.strip() for pred in predictions]
-                            output_prediction_file = os.path.join(training_args.output_dir, "generated_predictions.txt")
-                            with open(output_prediction_file, "w") as writer:
-                                writer.write("\n".join(predictions))
+                    # if trainer.is_world_process_zero():
+                    #     if training_args.predict_with_generate:
+                    #         predictions = tokenizer.batch_decode(
+                    #             predict_results.predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
+                    #         )
+                    #         predictions = [pred.strip() for pred in predictions]
+                    #         output_prediction_file = os.path.join(training_args.output_dir, "generated_predictions.txt")
+                    #         with open(output_prediction_file, "w") as writer:
+                    #             writer.write("\n".join(predictions))
 
                 kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "summarization"}
                 if data_args.dataset_name is not None:
@@ -650,5 +650,5 @@ if __name__ == "__main__":
 
 
 '''
-CUDA_VISIBLE_DEVICES=2 python -u baseline_BART_sequential_finetune.py --model_name_or_path facebook/bart-base --resume_from_checkpoint /home/tup51337/tmp/pretrained_BART_on_paper_tasks --do_train --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --do_predict --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=2 --per_device_eval_batch_size=2 --overwrite_output_dir --predict_with_generate --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
+CUDA_VISIBLE_DEVICES=2 python -u baseline_BART_sequential_finetune.py --model_name_or_path facebook/bart-base --resume_from_checkpoint /home/tup51337/tmp/pretrained_BART_on_paper_tasks --do_train --do_predict --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=2 --per_device_eval_batch_size=6 --overwrite_output_dir --predict_with_generate --max_predict_samples 100 --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
 '''
