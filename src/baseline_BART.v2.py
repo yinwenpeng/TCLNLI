@@ -298,10 +298,10 @@ def main():
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # os.environ["LOCAL_RANK"]=str(2)
     accelerator = Accelerator()
-    print('accelerator.state:', accelerator.state)
-
-    print(os.environ.get("LOCAL_RANK", -1))
-    exit(0)
+    # print('accelerator.state:', accelerator.state)
+    #
+    # print(os.environ.get("LOCAL_RANK", -1))
+    # exit(0)
     # Make one log on every process with the configuration for debugging.
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -444,18 +444,29 @@ def main():
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
 
+
+    raw_train_dataset = raw_datasets["train"].select(range(100))
+    raw_eval_dataset = raw_datasets["validation"].select(range(100))
     with accelerator.main_process_first():
-        processed_datasets = raw_datasets.map(
+        processed_train_dataset = raw_train_dataset.map(
             preprocess_function,
             batched=True,
             num_proc=args.preprocessing_num_workers,
             remove_columns=column_names,
             load_from_cache_file=not args.overwrite_cache,
-            desc="Running tokenizer on dataset",
+            desc="Running tokenizer on training dataset",
+        )
+        processed_eval_dataset = raw_eval_dataset.map(
+            preprocess_function,
+            batched=True,
+            num_proc=args.preprocessing_num_workers,
+            remove_columns=column_names,
+            load_from_cache_file=not args.overwrite_cache,
+            desc="Running tokenizer on eval dataset",
         )
 
-    train_dataset = processed_datasets["train"]
-    eval_dataset = processed_datasets["validation"]
+    train_dataset = processed_train_dataset
+    eval_dataset = processed_eval_dataset
 
     # Log a few random samples from the training set:
     for index in random.sample(range(len(train_dataset)), 1):
@@ -627,7 +638,7 @@ if __name__ == "__main__":
 
 
 '''
-CUDA_VISIBLE_DEVICES=1,2 python -u baseline_BART.v2.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=7 --per_device_eval_batch_size=16 --overwrite_output_dir --predict_with_generate --num_train_epochs 3 --learning_rate 5e-5
+CUDA_VISIBLE_DEVICES=0 python -u baseline_BART.v2.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=7 --per_device_eval_batch_size=16 --overwrite_output_dir --predict_with_generate --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3
 
 
 "finetune on instructions"
