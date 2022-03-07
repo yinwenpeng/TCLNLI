@@ -563,7 +563,7 @@ def main():
                     if evolve_step == 0:
                         checkpoint = training_args.resume_from_checkpoint
                     else:
-                        checkpoint = get_last_checkpoint(training_args.output_dir)
+                        checkpoint = training_args.output_dir
 
                     train_result = trainer.train(resume_from_checkpoint=checkpoint)
                     trainer.save_model()  # Saves the tokenizer too for easy upload
@@ -609,6 +609,7 @@ def main():
 
                     trainer.log_metrics("predict", metrics)
                     trainer.save_metrics("predict", metrics)
+                    print('\n>>>>predict_rougeL>>>>>>>:', metrics['predict_rougeL'])
 
                     # if trainer.is_world_process_zero():
                     #     if training_args.predict_with_generate:
