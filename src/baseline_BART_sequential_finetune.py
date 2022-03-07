@@ -239,15 +239,6 @@ class DataTrainingArguments:
     )
 
     def __post_init__(self):
-        if self.dataset_name is None and self.train_file is None and self.validation_file is None:
-            raise ValueError("Need either a dataset name or a training/validation file.")
-        else:
-            if self.train_file is not None:
-                extension = self.train_file.split(".")[-1]
-                assert extension in ["csv", "json"], "`train_file` should be a csv or a json file."
-            if self.validation_file is not None:
-                extension = self.validation_file.split(".")[-1]
-                assert extension in ["csv", "json"], "`validation_file` should be a csv or a json file."
         if self.val_max_target_length is None:
             self.val_max_target_length = self.max_target_length
 
@@ -665,5 +656,5 @@ if __name__ == "__main__":
 
 
 '''
-CUDA_VISIBLE_DEVICES=2 python -u baseline_BART_sequential_finetune.py --model_name_or_path facebook/bart-base --resume_from_checkpoint /home/tup51337/tmp/pretrained_BART_on_paper_tasks --do_train --do_predict --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=2 --per_device_eval_batch_size=2 --overwrite_output_dir --predict_with_generate --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
+CUDA_VISIBLE_DEVICES=2 python -u baseline_BART_sequential_finetune.py --model_name_or_path facebook/bart-base --resume_from_checkpoint /home/tup51337/tmp/pretrained_BART_on_paper_tasks --do_train --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --do_predict --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=2 --per_device_eval_batch_size=2 --overwrite_output_dir --predict_with_generate --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
 '''
