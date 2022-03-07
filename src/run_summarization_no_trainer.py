@@ -533,67 +533,71 @@ def main():
     completed_steps = 0
 
     # for epoch in range(args.num_train_epochs):
-    #     model.train()
-    #     for step, batch in enumerate(train_dataloader):
-    #         outputs = model(**batch)
-    #         loss = outputs.loss
-    #         loss = loss / args.gradient_accumulation_steps
-    #         accelerator.backward(loss)
-    #         if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-    #             optimizer.step()
-    #             lr_scheduler.step()
-    #             optimizer.zero_grad()
-    #             progress_bar.update(1)
-    #             completed_steps += 1
-    #
-    #         if completed_steps >= args.max_train_steps:
-    #             break
+    for epoch in trange(args.num_train_epochs, desc="train_epochs"):
+        model.train()
+        for step, batch in enumerate(train_dataloader):
+            outputs = model(**batch)
+            loss = outputs.loss
+            loss = loss / args.gradient_accumulation_steps
+            print('training loss:', loss)
+            accelerator.backward(loss)
+            if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()
+                progress_bar.update(1)
+                completed_steps += 1
 
-    model.eval()
-    if args.val_max_target_length is None:
-        args.val_max_target_length = args.max_target_length
+            if completed_steps >= args.max_train_steps:
+                break
 
-    gen_kwargs = {
-        "max_length": args.val_max_target_length if args is not None else config.max_length,
-        "num_beams": args.num_beams,
-    }
-    for step, batch in enumerate(eval_dataloader):
-        with torch.no_grad():
-            generated_tokens = accelerator.unwrap_model(model).generate(
-                batch["input_ids"],
-                attention_mask=batch["attention_mask"],
-                **gen_kwargs,
-            )
+        print('\n evaluating...')
+        model.eval()
+        if args.val_max_target_length is None:
+            args.val_max_target_length = args.max_target_length
 
-            generated_tokens = accelerator.pad_across_processes(
-                generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
-            )
-            labels = batch["labels"]
-            if not args.pad_to_max_length:
-                # If we did not pad to max length, we need to pad the labels too
-                labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
+        gen_kwargs = {
+            "max_length": args.val_max_target_length if args is not None else config.max_length,
+            "num_beams": args.num_beams,
+        }
+        # for step, batch in enumerate(eval_dataloader):
+        for step, batch in enumerate(tqdm(eval_dataloader, desc="Iteration")):
+            with torch.no_grad():
+                generated_tokens = accelerator.unwrap_model(model).generate(
+                    batch["input_ids"],
+                    attention_mask=batch["attention_mask"],
+                    **gen_kwargs,
+                )
 
-            generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
-            labels = accelerator.gather(labels).cpu().numpy()
+                generated_tokens = accelerator.pad_across_processes(
+                    generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
+                )
+                labels = batch["labels"]
+                if not args.pad_to_max_length:
+                    # If we did not pad to max length, we need to pad the labels too
+                    labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
 
-            if args.ignore_pad_token_for_loss:
-                # Replace -100 in the labels as we can't decode them.
-                labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-            if isinstance(generated_tokens, tuple):
-                generated_tokens = generated_tokens[0]
-            decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+                generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
+                labels = accelerator.gather(labels).cpu().numpy()
 
-            decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+                if args.ignore_pad_token_for_loss:
+                    # Replace -100 in the labels as we can't decode them.
+                    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+                if isinstance(generated_tokens, tuple):
+                    generated_tokens = generated_tokens[0]
+                decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+                decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
-            metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-    result = metric.compute(use_stemmer=True)
-    # Extract a few results from ROUGE
-    result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
+                decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-    result = {k: round(v, 4) for k, v in result.items()}
+                metric.add_batch(predictions=decoded_preds, references=decoded_labels)
+        result = metric.compute(use_stemmer=True)
+        # Extract a few results from ROUGE
+        result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
 
-    logger.info(result)
+        result = {k: round(v, 4) for k, v in result.items()}
+
+        logger.info(result)
 
 
 
@@ -612,8 +616,8 @@ if __name__ == "__main__":
 
 
 '''
-CUDA_VISIBLE_DEVICES=1 python -u run_summarization_no_trainer.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=16 --per_device_eval_batch_size=32 --num_train_epochs 0 --learning_rate 5e-5
+CUDA_VISIBLE_DEVICES=1 python -u run_summarization_no_trainer.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/QG.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=16 --per_device_eval_batch_size=32 --num_train_epochs 3 --learning_rate 5e-5
 
-CUDA_VISIBLE_DEVICES=5,6 accelerate launch run_summarization_no_trainer.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=16 --per_device_eval_batch_size=32 --num_train_epochs 3 --learning_rate 5e-5
+CUDA_VISIBLE_DEVICES=5,6 accelerate launch run_summarization_no_trainer.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/QG.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=16 --per_device_eval_batch_size=32 --num_train_epochs 3 --learning_rate 5e-5
 
 '''
