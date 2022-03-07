@@ -625,12 +625,12 @@ def store_model(accele, model, output_dir, tokenizer):
     print('Model saved.')
 
 
-    if args.output_dir is not None:
-        accelerator.wait_for_everyone()
-        unwrapped_model = accelerator.unwrap_model(model)
-        unwrapped_model.save_pretrained(args.output_dir, save_function=accelerator.save)
-        if accelerator.is_main_process:
-            tokenizer.save_pretrained(args.output_dir)
+    # if args.output_dir is not None:
+    #     accelerator.wait_for_everyone()
+    #     unwrapped_model = accelerator.unwrap_model(model)
+    #     unwrapped_model.save_pretrained(args.output_dir, save_function=accelerator.save)
+    #     if accelerator.is_main_process:
+    #         tokenizer.save_pretrained(args.output_dir)
 
 
 if __name__ == "__main__":
