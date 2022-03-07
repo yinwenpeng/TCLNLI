@@ -297,7 +297,7 @@ def main():
         )
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     accelerator = Accelerator()
-    print('accelerator.device:', accelerator.device)
+    print('accelerator.state:', accelerator.state)
     exit(0)
     # Make one log on every process with the configuration for debugging.
     logging.basicConfig(
