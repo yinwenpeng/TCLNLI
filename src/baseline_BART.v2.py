@@ -445,8 +445,8 @@ def main():
         return model_inputs
 
 
-    raw_train_dataset =  raw_datasets["train"].select(range(200))
-    raw_eval_dataset = raw_datasets["validation"].select(range(100))
+    raw_train_dataset =  raw_datasets["train"]#.select(range(200))
+    raw_eval_dataset = raw_datasets["validation"]#.select(range(100))
 
     with accelerator.main_process_first():
         processed_train_dataset = raw_train_dataset.map(
@@ -643,7 +643,7 @@ training:
 CUDA_VISIBLE_DEVICES=0 python -u baseline_BART.v2.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3 > log.v2.txt 2>&1
 
 forfun:
-CUDA_VISIBLE_DEVICES=1,2 python -u baseline_BART.v2.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3
+CUDA_VISIBLE_DEVICES="1,2" accelerate launch baseline_BART.v2.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3
 
 
 
