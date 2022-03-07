@@ -155,7 +155,7 @@ def generate_training_examples_from_instruction(input_folder, output_folder):
 
         INSTRUCTION_text, POS_ex_2_text, POS_ex_tuple_list = load_instruction_from_json_data(input_folder+'/'+fil)
         for tuple in POS_ex_tuple_list:
-            X = tuple[0]+' '+INSTRUCTION_text+' '+POS_ex_2_text
+            X = tuple[0]+' '+INSTRUCTION_text#+' '+POS_ex_2_text
             Y = tuple[1]
             writer.writerow({'input': X.strip(), 'output': Y.strip()})
         csvfile.close()
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     # merge_test_tasks_into_one_category(test_csv_path, ['subtask034_winogrande_question_modification_object.csv', 'subtask045_miscellaneous_sentence_paraphrasing.csv'], 'MM.csv')
     # merge_test_tasks_into_one_category(test_csv_path, ['subtask039_qasc_find_overlapping_words.csv', 'subtask044_essential_terms_identifying_essential_words.csv'], 'VF.csv')
 
-    # generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv')
+    generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv')
 
     test_csv_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
     merge_test_tasks_into_one_category(test_csv_path, ['subtask002_quoref_answer_generation.csv', 'subtask033_winogrande_answer_generation.csv'], 'AG.csv')
