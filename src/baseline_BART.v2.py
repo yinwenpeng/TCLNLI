@@ -298,6 +298,7 @@ def main():
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     accelerator = Accelerator()
     print('accelerator.state:', accelerator.state)
+    os.environ["LOCAL_RANK"]=2
     print(os.environ.get("LOCAL_RANK", -1))
     exit(0)
     # Make one log on every process with the configuration for debugging.
