@@ -555,7 +555,7 @@ def main():
             outputs = model(**batch)
             loss = outputs.loss
             loss = loss / args.gradient_accumulation_steps
-            print('training loss:', loss)
+            # print('training loss:', loss)
             accelerator.backward(loss)
             if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                 optimizer.step()
