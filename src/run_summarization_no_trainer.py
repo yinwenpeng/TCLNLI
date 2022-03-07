@@ -24,7 +24,7 @@ import math
 import os
 import random
 from pathlib import Path
-
+from tqdm import tqdm, trange
 import datasets
 import nltk
 import numpy as np
