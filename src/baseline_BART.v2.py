@@ -566,7 +566,7 @@ def main():
 
             if completed_steps >= args.max_train_steps:
                 break
-        store_model(accelerator, model, args.output_dir)
+        store_model(accelerator, model, args.output_dir, tokenizer)
     '''evaluting'''
     model.eval()
     if args.val_max_target_length is None:
@@ -616,7 +616,7 @@ def main():
     logger.info(result)
 
 
-def store_model(accele, model, output_dir):
+def store_model(accele, model, output_dir, tokenizer):
     accele.wait_for_everyone()
     unwrapped_model = accele.unwrap_model(model)
     unwrapped_model.save_pretrained(output_dir, save_function=accele.save)
@@ -638,7 +638,7 @@ if __name__ == "__main__":
 
 
 '''
-CUDA_VISIBLE_DEVICES=0 python -u baseline_BART.v2.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=7 --per_device_eval_batch_size=16 --overwrite_output_dir --predict_with_generate --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3
+CUDA_VISIBLE_DEVICES=0 python -u baseline_BART.v2.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=7 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3
 
 
 "finetune on instructions"
