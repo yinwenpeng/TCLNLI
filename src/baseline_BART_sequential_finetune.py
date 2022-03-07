@@ -312,53 +312,10 @@ def main():
             "`--source_prefix 'summarize: ' `"
         )
 
-    # Detecting last checkpoint.
-    last_checkpoint = None
-    if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
-        last_checkpoint = get_last_checkpoint(training_args.output_dir)
-        if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
-            raise ValueError(
-                f"Output directory ({training_args.output_dir}) already exists and is not empty. "
-                "Use --overwrite_output_dir to overcome."
-            )
-        elif last_checkpoint is not None and training_args.resume_from_checkpoint is None:
-            logger.info(
-                f"Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change "
-                "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
-            )
+
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
-
-    # Get the datasets: you can either provide your own CSV/JSON training and evaluation files (see below)
-    # or just provide the name of one of the public datasets available on the hub at https://huggingface.co/datasets/
-    # (the dataset will be downloaded automatically from the datasets Hub).
-    #
-    # For CSV/JSON files this script will use the first column for the full texts and the second column for the
-    # summaries (unless you specify column names for this with the `text_column` and `summary_column` arguments).
-    #
-    # In distributed training, the load_dataset function guarantee that only one local process can concurrently
-    # download the dataset.
-
-    data_files = {}
-    if data_args.train_file is not None:
-        data_files["train"] = data_args.train_file
-        extension = data_args.train_file.split(".")[-1]
-    if data_args.validation_file is not None:
-        data_files["validation"] = data_args.validation_file
-        extension = data_args.validation_file.split(".")[-1]
-    if data_args.test_file is not None:
-        data_files["test"] = data_args.test_file
-        extension = data_args.test_file.split(".")[-1]
-    raw_datasets = load_dataset(extension, data_files=data_files, cache_dir=model_args.cache_dir)
-    # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
-    # https://huggingface.co/docs/datasets/loading_datasets.html.
-
-    # Load pretrained model and tokenizer
-    #
-    # Distributed training:
-    # The .from_pretrained methods guarantee that only one local process can concurrently
-    # download model & vocab.
     config = AutoConfig.from_pretrained(
         model_args.config_name if model_args.config_name else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
@@ -410,66 +367,7 @@ def main():
                 f" position encodings. Consider either reducing `--max_source_length` to {model.config.max_position_embeddings} or to automatically "
                 "resize the model's position encodings by passing `--resize_position_embeddings`."
             )
-
     prefix = data_args.source_prefix if data_args.source_prefix is not None else ""
-
-    # Preprocessing the datasets.
-    # We need to tokenize inputs and targets.
-    if training_args.do_train:
-        column_names = raw_datasets["train"].column_names
-    elif training_args.do_eval:
-        column_names = raw_datasets["validation"].column_names
-    elif training_args.do_predict:
-        column_names = raw_datasets["test"].column_names
-    else:
-        logger.info("There is nothing to do. Please pass `do_train`, `do_eval` and/or `do_predict`.")
-        return
-
-    if isinstance(tokenizer, tuple(MULTILINGUAL_TOKENIZERS)):
-        assert (
-            data_args.lang is not None
-        ), f"{tokenizer.__class__.__name__} is a multilingual tokenizer which requires --lang argument"
-
-        tokenizer.src_lang = data_args.lang
-        tokenizer.tgt_lang = data_args.lang
-
-        # For multilingual translation models like mBART-50 and M2M100 we need to force the target language token
-        # as the first generated token. We ask the user to explicitly provide this as --forced_bos_token argument.
-        forced_bos_token_id = (
-            tokenizer.lang_code_to_id[data_args.forced_bos_token] if data_args.forced_bos_token is not None else None
-        )
-        model.config.forced_bos_token_id = forced_bos_token_id
-
-    # Get the column names for input/target.
-    dataset_columns = summarization_name_mapping.get(data_args.dataset_name, None)
-    if data_args.text_column is None:
-        '''the first column as input text'''
-        text_column = dataset_columns[0] if dataset_columns is not None else column_names[0]
-    else:
-        text_column = data_args.text_column
-        if text_column not in column_names:
-            raise ValueError(
-                f"--text_column' value '{data_args.text_column}' needs to be one of: {', '.join(column_names)}"
-            )
-    if data_args.summary_column is None:
-        '''the second column as output text'''
-        summary_column = dataset_columns[1] if dataset_columns is not None else column_names[1]
-    else:
-        summary_column = data_args.summary_column
-        if summary_column not in column_names:
-            raise ValueError(
-                f"--summary_column' value '{data_args.summary_column}' needs to be one of: {', '.join(column_names)}"
-            )
-
-    # Temporarily set max_target_length for training.
-    max_target_length = data_args.max_target_length
-    padding = "max_length" if data_args.pad_to_max_length else False
-
-    if training_args.label_smoothing_factor > 0 and not hasattr(model, "prepare_decoder_input_ids_from_labels"):
-        logger.warning(
-            "label_smoothing is enabled but the `prepare_decoder_input_ids_from_labels` method is not defined for"
-            f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
-        )
 
     def preprocess_function(examples):
         # remove pairs where at least one record is None
@@ -496,60 +394,6 @@ def main():
 
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
-
-    if training_args.do_train:
-        if "train" not in raw_datasets:
-            raise ValueError("--do_train requires a train dataset")
-
-        train_dataset_list = []
-        for tag in taglist:
-            train_dataset = raw_datasets[tag]
-            if data_args.max_train_samples is not None:
-                train_dataset = train_dataset.select(range(data_args.max_train_samples))
-            with training_args.main_process_first(desc=tag+" >>dataset map pre-processing"):
-                train_dataset = train_dataset.map(
-                    preprocess_function,
-                    batched=True,
-                    num_proc=data_args.preprocessing_num_workers,
-                    remove_columns=column_names,
-                    load_from_cache_file=not data_args.overwrite_cache,
-                    desc="Running tokenizer on dataset: "+tag,
-                )
-            train_dataset_list.append(train_dataset)
-
-    if training_args.do_eval:
-        max_target_length = data_args.val_max_target_length
-        if "validation" not in raw_datasets:
-            raise ValueError("--do_eval requires a validation dataset")
-        eval_dataset = raw_datasets["validation"]
-        if data_args.max_eval_samples is not None:
-            eval_dataset = eval_dataset.select(range(data_args.max_eval_samples))
-        with training_args.main_process_first(desc="validation dataset map pre-processing"):
-            eval_dataset = eval_dataset.map(
-                preprocess_function,
-                batched=True,
-                num_proc=data_args.preprocessing_num_workers,
-                remove_columns=column_names,
-                load_from_cache_file=not data_args.overwrite_cache,
-                desc="Running tokenizer on validation dataset",
-            )
-
-    if training_args.do_predict:
-        max_target_length = data_args.val_max_target_length
-        if "test" not in raw_datasets:
-            raise ValueError("--do_predict requires a test dataset")
-        predict_dataset = raw_datasets["test"]
-        if data_args.max_predict_samples is not None:
-            predict_dataset = predict_dataset.select(range(data_args.max_predict_samples))
-        with training_args.main_process_first(desc="prediction dataset map pre-processing"):
-            predict_dataset = predict_dataset.map(
-                preprocess_function,
-                batched=True,
-                num_proc=data_args.preprocessing_num_workers,
-                remove_columns=column_names,
-                load_from_cache_file=not data_args.overwrite_cache,
-                desc="Running tokenizer on prediction dataset",
-            )
 
     # Data collator
     label_pad_token_id = -100 if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id
@@ -595,96 +439,218 @@ def main():
         result = {k: round(v, 4) for k, v in result.items()}
         return result
 
-    # Initialize our Trainer
-    trainer = Seq2SeqTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset if training_args.do_train else None,
-        eval_dataset=eval_dataset if training_args.do_eval else None,
-        tokenizer=tokenizer,
-        data_collator=data_collator,
-        compute_metrics=compute_metrics if training_args.predict_with_generate else None,
-    )
+    unseen_tasks_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
+    unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv', 'IAG.csv', 'MM.csv', 'CF.csv']
+    for unseen_task in unseen_task_sequence:
+        head_task = unseen_task
+        test_file = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'+head_task
+        subsequent_task_list = [task_i for task_i in unseen_task_sequence if task_i != head_task]
+        for repeat_i in range(10):
+            random.shuffle(subsequent_task_list)
+            task_sequence_for_evolve = [head_task]+subsequent_task_list
+            '''continual learning on task_sequence_for_evolve'''
+            for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
 
-    # Training
-    if training_args.do_train:
-        checkpoint = None
-        if training_args.resume_from_checkpoint is not None:
-            checkpoint = training_args.resume_from_checkpoint
-        elif last_checkpoint is not None:
-            checkpoint = last_checkpoint
-        '''actual training epochs'''
-        train_result = trainer.train(resume_from_checkpoint=checkpoint)
-        trainer.save_model()  # Saves the tokenizer too for easy upload
+                data_files = {}
+                data_files["train"] = unseen_tasks_path+train_task_filename
+                if data_args.validation_file is not None:
+                    data_files["validation"] = data_args.validation_file
+                data_files["test"] = test_file
+                extension = 'csv'
+                raw_datasets = load_dataset(extension, data_files=data_files, cache_dir=model_args.cache_dir)
 
-        metrics = train_result.metrics
-        max_train_samples = (
-            data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
-        )
-        metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
-        trainer.log_metrics("train", metrics)
-        trainer.save_metrics("train", metrics)
-        trainer.save_state()
+                # Preprocessing the datasets.
+                # We need to tokenize inputs and targets.
+                if training_args.do_train:
+                    column_names = raw_datasets["train"].column_names
+                elif training_args.do_eval:
+                    column_names = raw_datasets["validation"].column_names
+                elif training_args.do_predict:
+                    column_names = raw_datasets["test"].column_names
+                else:
+                    logger.info("There is nothing to do. Please pass `do_train`, `do_eval` and/or `do_predict`.")
+                    return
 
-    # Evaluation
-    results = {}
-    max_length = (
-        training_args.generation_max_length
-        if training_args.generation_max_length is not None
-        else data_args.val_max_target_length
-    )
-    num_beams = data_args.num_beams if data_args.num_beams is not None else training_args.generation_num_beams
-    if training_args.do_eval:
-        logger.info("*** Evaluate ***")
-        metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
-        max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
-        metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
+                # Get the column names for input/target.
+                dataset_columns = summarization_name_mapping.get(data_args.dataset_name, None)
+                if data_args.text_column is None:
+                    '''the first column as input text'''
+                    text_column = dataset_columns[0] if dataset_columns is not None else column_names[0]
+                else:
+                    text_column = data_args.text_column
+                    if text_column not in column_names:
+                        raise ValueError(
+                            f"--text_column' value '{data_args.text_column}' needs to be one of: {', '.join(column_names)}"
+                        )
+                if data_args.summary_column is None:
+                    '''the second column as output text'''
+                    summary_column = dataset_columns[1] if dataset_columns is not None else column_names[1]
+                else:
+                    summary_column = data_args.summary_column
+                    if summary_column not in column_names:
+                        raise ValueError(
+                            f"--summary_column' value '{data_args.summary_column}' needs to be one of: {', '.join(column_names)}"
+                        )
 
-        trainer.log_metrics("eval", metrics)
-        trainer.save_metrics("eval", metrics)
+                # Temporarily set max_target_length for training.
+                max_target_length = data_args.max_target_length
+                padding = "max_length" if data_args.pad_to_max_length else False
 
-    if training_args.do_predict:
-        logger.info("*** Predict ***")
+                if training_args.label_smoothing_factor > 0 and not hasattr(model, "prepare_decoder_input_ids_from_labels"):
+                    logger.warning(
+                        "label_smoothing is enabled but the `prepare_decoder_input_ids_from_labels` method is not defined for"
+                        f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
+                    )
 
-        predict_results = trainer.predict(
-            predict_dataset, metric_key_prefix="predict", max_length=max_length, num_beams=num_beams
-        )
-        metrics = predict_results.metrics
-        max_predict_samples = (
-            data_args.max_predict_samples if data_args.max_predict_samples is not None else len(predict_dataset)
-        )
-        metrics["predict_samples"] = min(max_predict_samples, len(predict_dataset))
 
-        trainer.log_metrics("predict", metrics)
-        trainer.save_metrics("predict", metrics)
 
-        if trainer.is_world_process_zero():
-            if training_args.predict_with_generate:
-                predictions = tokenizer.batch_decode(
-                    predict_results.predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
+                if training_args.do_train:
+                    if "train" not in raw_datasets:
+                        raise ValueError("--do_train requires a train dataset")
+
+                    train_dataset_list = []
+                    for tag in taglist:
+                        train_dataset = raw_datasets[tag]
+                        if data_args.max_train_samples is not None:
+                            train_dataset = train_dataset.select(range(data_args.max_train_samples))
+                        with training_args.main_process_first(desc=tag+" >>dataset map pre-processing"):
+                            train_dataset = train_dataset.map(
+                                preprocess_function,
+                                batched=True,
+                                num_proc=data_args.preprocessing_num_workers,
+                                remove_columns=column_names,
+                                load_from_cache_file=not data_args.overwrite_cache,
+                                desc="Running tokenizer on dataset: "+tag,
+                            )
+                        train_dataset_list.append(train_dataset)
+
+                if training_args.do_eval:
+                    max_target_length = data_args.val_max_target_length
+                    if "validation" not in raw_datasets:
+                        raise ValueError("--do_eval requires a validation dataset")
+                    eval_dataset = raw_datasets["validation"]
+                    if data_args.max_eval_samples is not None:
+                        eval_dataset = eval_dataset.select(range(data_args.max_eval_samples))
+                    with training_args.main_process_first(desc="validation dataset map pre-processing"):
+                        eval_dataset = eval_dataset.map(
+                            preprocess_function,
+                            batched=True,
+                            num_proc=data_args.preprocessing_num_workers,
+                            remove_columns=column_names,
+                            load_from_cache_file=not data_args.overwrite_cache,
+                            desc="Running tokenizer on validation dataset",
+                        )
+
+                if training_args.do_predict:
+                    max_target_length = data_args.val_max_target_length
+                    if "test" not in raw_datasets:
+                        raise ValueError("--do_predict requires a test dataset")
+                    predict_dataset = raw_datasets["test"]
+                    if data_args.max_predict_samples is not None:
+                        predict_dataset = predict_dataset.select(range(data_args.max_predict_samples))
+                    with training_args.main_process_first(desc="prediction dataset map pre-processing"):
+                        predict_dataset = predict_dataset.map(
+                            preprocess_function,
+                            batched=True,
+                            num_proc=data_args.preprocessing_num_workers,
+                            remove_columns=column_names,
+                            load_from_cache_file=not data_args.overwrite_cache,
+                            desc="Running tokenizer on prediction dataset",
+                        )
+
+
+
+                # Initialize our Trainer
+                trainer = Seq2SeqTrainer(
+                    model=model,
+                    args=training_args,
+                    train_dataset=train_dataset if training_args.do_train else None,
+                    eval_dataset=eval_dataset if training_args.do_eval else None,
+                    tokenizer=tokenizer,
+                    data_collator=data_collator,
+                    compute_metrics=compute_metrics if training_args.predict_with_generate else None,
                 )
-                predictions = [pred.strip() for pred in predictions]
-                output_prediction_file = os.path.join(training_args.output_dir, "generated_predictions.txt")
-                with open(output_prediction_file, "w") as writer:
-                    writer.write("\n".join(predictions))
 
-    kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "summarization"}
-    if data_args.dataset_name is not None:
-        kwargs["dataset_tags"] = data_args.dataset_name
-        if data_args.dataset_config_name is not None:
-            kwargs["dataset_args"] = data_args.dataset_config_name
-            kwargs["dataset"] = f"{data_args.dataset_name} {data_args.dataset_config_name}"
-        else:
-            kwargs["dataset"] = data_args.dataset_name
+                # Training
+                if training_args.do_train:
+                    '''actual training epochs'''
+                    if evolve_step == 0:
+                        checkpoint = training_args.resume_from_checkpoint
+                    else:
+                        checkpoint = get_last_checkpoint(training_args.output_dir)
 
-    if data_args.lang is not None:
-        kwargs["language"] = data_args.lang
+                    train_result = trainer.train(resume_from_checkpoint=checkpoint)
+                    trainer.save_model()  # Saves the tokenizer too for easy upload
 
-    if training_args.push_to_hub:
-        trainer.push_to_hub(**kwargs)
-    else:
-        trainer.create_model_card(**kwargs)
+                    metrics = train_result.metrics
+                    max_train_samples = (
+                        data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
+                    )
+                    metrics["train_samples"] = min(max_train_samples, len(train_dataset))
+
+                    trainer.log_metrics("train", metrics)
+                    trainer.save_metrics("train", metrics)
+                    trainer.save_state()
+
+                # Evaluation
+                results = {}
+                max_length = (
+                    training_args.generation_max_length
+                    if training_args.generation_max_length is not None
+                    else data_args.val_max_target_length
+                )
+                num_beams = data_args.num_beams if data_args.num_beams is not None else training_args.generation_num_beams
+                if training_args.do_eval:
+                    logger.info("*** Evaluate ***")
+                    metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
+                    max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
+                    metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
+
+                    trainer.log_metrics("eval", metrics)
+                    trainer.save_metrics("eval", metrics)
+
+                if training_args.do_predict:
+                    logger.info("*** Predict ***")
+
+                    predict_results = trainer.predict(
+                        predict_dataset, metric_key_prefix="predict", max_length=max_length, num_beams=num_beams
+                    )
+                    metrics = predict_results.metrics
+                    max_predict_samples = (
+                        data_args.max_predict_samples if data_args.max_predict_samples is not None else len(predict_dataset)
+                    )
+                    metrics["predict_samples"] = min(max_predict_samples, len(predict_dataset))
+
+                    trainer.log_metrics("predict", metrics)
+                    trainer.save_metrics("predict", metrics)
+
+                    if trainer.is_world_process_zero():
+                        if training_args.predict_with_generate:
+                            predictions = tokenizer.batch_decode(
+                                predict_results.predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
+                            )
+                            predictions = [pred.strip() for pred in predictions]
+                            output_prediction_file = os.path.join(training_args.output_dir, "generated_predictions.txt")
+                            with open(output_prediction_file, "w") as writer:
+                                writer.write("\n".join(predictions))
+
+                kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "summarization"}
+                if data_args.dataset_name is not None:
+                    kwargs["dataset_tags"] = data_args.dataset_name
+                    if data_args.dataset_config_name is not None:
+                        kwargs["dataset_args"] = data_args.dataset_config_name
+                        kwargs["dataset"] = f"{data_args.dataset_name} {data_args.dataset_config_name}"
+                    else:
+                        kwargs["dataset"] = data_args.dataset_name
+
+                if data_args.lang is not None:
+                    kwargs["language"] = data_args.lang
+
+                if training_args.push_to_hub:
+                    trainer.push_to_hub(**kwargs)
+                else:
+                    trainer.create_model_card(**kwargs)
 
     return results
 
@@ -699,5 +665,5 @@ if __name__ == "__main__":
 
 
 '''
-CUDA_VISIBLE_DEVICES=1,2 python -u baseline_BART.py --model_name_or_path facebook/bart-base --do_train --do_predict --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --test_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/dataset/Natural-Instructions/system_output/baseline_BART --per_device_train_batch_size=7 --per_device_eval_batch_size=16 --overwrite_output_dir --predict_with_generate --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
+CUDA_VISIBLE_DEVICES=2 python -u baseline_BART_sequential_finetune.py --model_name_or_path facebook/bart-base --resume_from_checkpoint /home/tup51337/tmp/pretrained_BART_on_paper_tasks --do_train --do_predict --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=2 --per_device_eval_batch_size=2 --overwrite_output_dir --predict_with_generate --num_train_epochs 3.0 --learning_rate 5e-5 --save_strategy epoch
 '''
