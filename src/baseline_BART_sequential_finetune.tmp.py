@@ -321,14 +321,14 @@ def main():
     # Preprocessing the datasets.
     # First we tokenize all the texts.
     unseen_tasks_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
-    unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv']#, 'IAG.csv', 'MM.csv', 'CF.csv']
+    unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv', 'IAG.csv', 'MM.csv', 'CF.csv']
     unseen_task_2_performance = {}
     for unseen_task in unseen_task_sequence:
         head_task = unseen_task
         test_file = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'+head_task
         subsequent_task_list = [task_i for task_i in unseen_task_sequence if task_i != head_task]
         head_task_performance_list = []
-        repeat_times = 2#10
+        repeat_times = 10
         for repeat_i in range(repeat_times):
             '''first prepare a fresh model and tokenizer'''
             config = AutoConfig.from_pretrained(args.model_name_or_path)
@@ -405,7 +405,7 @@ def main():
                         desc="Running tokenizer on dataset",
                     )
                 train_dataset = tokenized_dataset["train"]
-                eval_dataset = tokenized_dataset["validation"].select(range(200))
+                eval_dataset = tokenized_dataset["validation"]#.select(range(200))
 
                 label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
                 data_collator = DataCollatorForSeq2Seq(
@@ -557,7 +557,7 @@ CUDA_VISIBLE_DEVICES="0,1,2,3" accelerate launch baseline_BART_sequential_finetu
 
 
 "finetune on instructions"
-CUDA_VISIBLE_DEVICES=0 accelerate launch baseline_BART_sequential_finetune.tmp.py --model_name_or_path /home/tup51337/tmp/tmp --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=16 --num_train_epochs 2 --learning_rate 2e-5
+CUDA_VISIBLE_DEVICES=0 accelerate launch baseline_BART_sequential_finetune.tmp.py --model_name_or_path /home/tup51337/tmp/tmp --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5
 
 
 
