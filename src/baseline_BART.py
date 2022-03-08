@@ -428,15 +428,13 @@ def main():
         inputs = examples[text_column]
         targets = examples[summary_column]
         inputs = [prefix + inp for inp in inputs]
+        targets = [ prefix + inp for inp in targets if len(inp.strip())!=0 else "none"]
         #model_inputs: dict_keys(['input_ids', 'attention_mask'])
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
         print('tokenize input over')
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
-            print('targets length:', len(targets))
-            for target in targets:
-                print('target: ', target)
-                labels = tokenizer([target], max_length=max_target_length, padding=padding, truncation=True)
+            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
         print('tokenize target over')
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
@@ -464,7 +462,7 @@ def main():
         # )
         processed_eval_dataset = raw_eval_dataset.map(
             preprocess_function,
-            batched=False,
+            batched=True,
             num_proc=args.preprocessing_num_workers,
             remove_columns=column_names,
             load_from_cache_file=not args.overwrite_cache,
