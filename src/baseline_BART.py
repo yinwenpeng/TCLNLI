@@ -429,18 +429,11 @@ def main():
         targets = examples[summary_column]
         inputs = [prefix + inp for inp in inputs]
         #model_inputs: dict_keys(['input_ids', 'attention_mask'])
-        for input in inputs:
-            print('input:', input)
-            model_inputs = tokenizer(input, max_length=args.max_source_length, padding=padding, truncation=True)
-        # print('tokenize inputs over')
-        # exit(0)
+        model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
-            for target in targets:
-                print('target:', target)
-                labels = tokenizer(target, max_length=max_target_length, padding=padding, truncation=True)
-            print('tokenize inputs over')
-            exit(0)
+            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
         if padding == "max_length" and args.ignore_pad_token_for_loss:
@@ -456,14 +449,14 @@ def main():
     raw_eval_dataset = raw_datasets["validation"]#.select(range(100))
 
     with accelerator.main_process_first():
-        # processed_train_dataset = raw_train_dataset.map(
-        #     preprocess_function,
-        #     batched=True,
-        #     num_proc=args.preprocessing_num_workers,
-        #     remove_columns=column_names,
-        #     load_from_cache_file=not args.overwrite_cache,
-        #     desc="Running tokenizer on training dataset",
-        # )
+        processed_train_dataset = raw_train_dataset.map(
+            preprocess_function,
+            batched=True,
+            num_proc=args.preprocessing_num_workers,
+            remove_columns=column_names,
+            load_from_cache_file=not args.overwrite_cache,
+            desc="Running tokenizer on training dataset",
+        )
         processed_eval_dataset = raw_eval_dataset.map(
             preprocess_function,
             batched=True,
@@ -473,6 +466,8 @@ def main():
             desc="Running tokenizer on eval dataset",
         )
 
+    print('so far so good')
+    exit(0)
     train_dataset = processed_train_dataset
     eval_dataset = processed_eval_dataset
 
