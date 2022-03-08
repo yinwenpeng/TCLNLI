@@ -427,7 +427,7 @@ def main():
     def preprocess_function(examples):
         inputs = examples[text_column]
         targets = examples[summary_column]
-        inputs = [prefix + inp for inp in inputs]
+        inputs = [str(prefix + inp) for inp in inputs]
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
 
         # Setup the tokenizer for targets
@@ -643,7 +643,7 @@ training:
 CUDA_VISIBLE_DEVICES="0,1,2,3" accelerate launch baseline_BART.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3 > log.v2.txt 2>&1
 
 evaluation only:
-CUDA_VISIBLE_DEVICES="0,1,2,3" accelerate launch baseline_BART.v2.py --model_name_or_path /home/tup51337/tmp/tmp --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 0 --learning_rate 5e-5 --preprocessing_num_workers 3
+CUDA_VISIBLE_DEVICES=1 accelerate launch baseline_BART.py --model_name_or_path /home/tup51337/tmp/tmp --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/MM.csv --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 0 --learning_rate 5e-5 --preprocessing_num_workers 3
 
 
 
