@@ -432,8 +432,8 @@ def main():
         for input in inputs:
             print('input:', input)
             model_inputs = tokenizer(input, max_length=args.max_source_length, padding=padding, truncation=True)
-        print('tokenize inputs over')
-        exit(0)
+        # print('tokenize inputs over')
+        # exit(0)
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
             for target in targets:
