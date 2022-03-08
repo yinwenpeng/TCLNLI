@@ -321,14 +321,14 @@ def main():
     # Preprocessing the datasets.
     # First we tokenize all the texts.
     unseen_tasks_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
-    unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv', 'IAG.csv', 'MM.csv', 'CF.csv']
+    unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv'}#, 'IAG.csv', 'MM.csv', 'CF.csv']
     unseen_task_2_performance = {}
     for unseen_task in unseen_task_sequence:
         head_task = unseen_task
         test_file = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'+head_task
         subsequent_task_list = [task_i for task_i in unseen_task_sequence if task_i != head_task]
         head_task_performance_list = []
-        repeat_times = 10
+        repeat_times = 2#10
         for repeat_i in range(repeat_times):
             '''first prepare a fresh model and tokenizer'''
             config = AutoConfig.from_pretrained(args.model_name_or_path)
