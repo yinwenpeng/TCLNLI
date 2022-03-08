@@ -430,9 +430,11 @@ def main():
         inputs = [prefix + inp for inp in inputs]
         #model_inputs: dict_keys(['input_ids', 'attention_mask'])
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
+        print('tokenize input over')
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+        print('tokenize target over')
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
