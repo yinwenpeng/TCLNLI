@@ -433,8 +433,10 @@ def main():
         print('tokenize input over')
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
-            print('targets:', targets)
-            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+            print('targets length:', len(targets))
+            for target in targets:
+                print('target: ', target)
+                labels = tokenizer([target], max_length=max_target_length, padding=padding, truncation=True)
         print('tokenize target over')
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
