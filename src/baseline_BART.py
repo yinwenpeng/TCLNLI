@@ -428,9 +428,11 @@ def main():
         inputs = examples[text_column]
         targets = examples[summary_column]
         inputs = [prefix + inp for inp in inputs]
-        inputs = inputs[:10]
-        model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
-        print('model_inputs:', model_inputs.keys())
+        #model_inputs: dict_keys(['input_ids', 'attention_mask'])
+        for input in inputs:
+            print('input:', input)
+            model_inputs = tokenizer(input, max_length=args.max_source_length, padding=padding, truncation=True)
+        print('tokenize inputs over')
         exit(0)
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
