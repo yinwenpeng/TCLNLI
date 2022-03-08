@@ -324,10 +324,10 @@ def main():
     unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv', 'IAG.csv', 'MM.csv', 'VF.csv']
     unseen_task_2_performance = {}
     for unseen_task in unseen_task_sequence:
-        head_task = unseen_task
-        test_file = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'+head_task
-        subsequent_task_list = [task_i for task_i in unseen_task_sequence if task_i != head_task]
-        head_task_performance_list = []
+        tail_task = unseen_task
+        test_file = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'+tail_task
+        subsequent_task_list = [task_i for task_i in unseen_task_sequence if task_i != tail_task]
+        tail_task_performance_list = []
         repeat_times = 10
         for repeat_i in range(repeat_times):
             '''first prepare a fresh model and tokenizer'''
@@ -359,7 +359,7 @@ def main():
 
             '''then, start to prepare data'''
             random.shuffle(subsequent_task_list)
-            task_sequence_for_evolve = [head_task]+subsequent_task_list
+            task_sequence_for_evolve = subsequent_task_list+[tail_task]
             print('task_sequence_for_evolve:', task_sequence_for_evolve)
             '''continual learning on task_sequence_for_evolve'''
             for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
@@ -512,10 +512,10 @@ def main():
             rouge_L = result["rougeL"]
 
             print('rouge_L:', rouge_L)
-            head_task_performance_list.append(rouge_L)
+            tail_task_performance_list.append(rouge_L)
             accelerator.free_memory()
-        assert len(head_task_performance_list) == repeat_times
-        i_mean_std = computer_mean_std(head_task_performance_list)
+        assert len(tail_task_performance_list) == repeat_times
+        i_mean_std = computer_mean_std(tail_task_performance_list)
         print(unseen_task, ' performance: ', i_mean_std)
         unseen_task_2_performance[unseen_task] = i_mean_std
     print('\nunseen_task_2_performance:', unseen_task_2_performance)
@@ -552,7 +552,7 @@ if __name__ == "__main__":
 '''
 
 "finetune on instructions"
-CUDA_VISIBLE_DEVICES=0 accelerate launch baseline_BART_sequential_finetune.py --model_name_or_path /home/tup51337/tmp/tmp --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 > log.finetune.txt 2>&1
+CUDA_VISIBLE_DEVICES=1 accelerate launch baseline_BART_sequential_finetune_forward_transfer.py --model_name_or_path /home/tup51337/tmp/tmp --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 > log.finetune.forward.transfer.txt 2>&1
 
 
 
