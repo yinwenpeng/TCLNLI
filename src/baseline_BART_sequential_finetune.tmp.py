@@ -477,9 +477,6 @@ def main():
     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
     logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
-    # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
-    completed_steps = 0
 
     # for epoch in range(args.num_train_epochs):
     for epoch in trange(args.num_train_epochs, desc="train_epochs"):
@@ -488,18 +485,14 @@ def main():
             outputs = model(**batch)
             loss = outputs.loss
             loss = loss / args.gradient_accumulation_steps
-            # print('training loss:', loss)
+            print('training loss:', loss)
             accelerator.backward(loss)
             if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
-                progress_bar.update(1)
-                completed_steps += 1
-
-            if completed_steps >= args.max_train_steps:
-                break
         store_model(accelerator, model, args.output_dir, tokenizer)
+
     '''evaluting'''
     model.eval()
     if args.val_max_target_length is None:
@@ -546,7 +539,8 @@ def main():
 
     result = {k: round(v, 4) for k, v in result.items()}
 
-    logger.info(result)
+    rouge_L = result["rougeL"]
+    print('rouge_L:', rouge_L)
 
 
 def store_model(accele, model, output_dir, tokenizer):
