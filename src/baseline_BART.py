@@ -431,11 +431,10 @@ def main():
         targets = [ prefix + inp  if inp is not None else "none" for inp in targets]
         #model_inputs: dict_keys(['input_ids', 'attention_mask'])
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
-        print('tokenize input over')
+
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
-        print('tokenize target over')
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
@@ -452,14 +451,14 @@ def main():
     raw_eval_dataset = raw_datasets["validation"]#.select(range(100))
 
     with accelerator.main_process_first():
-        # processed_train_dataset = raw_train_dataset.map(
-        #     preprocess_function,
-        #     batched=True,
-        #     num_proc=args.preprocessing_num_workers,
-        #     remove_columns=column_names,
-        #     load_from_cache_file=not args.overwrite_cache,
-        #     desc="Running tokenizer on training dataset",
-        # )
+        processed_train_dataset = raw_train_dataset.map(
+            preprocess_function,
+            batched=True,
+            num_proc=args.preprocessing_num_workers,
+            remove_columns=column_names,
+            load_from_cache_file=not args.overwrite_cache,
+            desc="Running tokenizer on training dataset",
+        )
         processed_eval_dataset = raw_eval_dataset.map(
             preprocess_function,
             batched=True,
