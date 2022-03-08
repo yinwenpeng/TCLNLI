@@ -379,6 +379,8 @@ def main():
                     '''tokenize, padding'''
                     inputs = examples[text_column]
                     targets = examples[summary_column]
+                    '''avoid NoneType in target'''
+                    targets = [ prefix + inp  if inp is not None else "none" for inp in targets]
                     model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
 
                     # Setup the tokenizer for targets
