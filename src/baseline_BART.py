@@ -433,6 +433,7 @@ def main():
         print('tokenize input over')
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
+            print('targets:', targets)
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
         print('tokenize target over')
 
