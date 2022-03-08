@@ -428,10 +428,10 @@ def main():
         inputs = examples[text_column]
         targets = examples[summary_column]
         inputs = [prefix + inp for inp in inputs]
-        print('inputs:', inputs)
-        exit(0)
+        inputs = [:10]
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
-
+        print('model_inputs:', model_inputs)
+        exit(0)
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
