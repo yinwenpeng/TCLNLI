@@ -321,7 +321,7 @@ def main():
     # Preprocessing the datasets.
     # First we tokenize all the texts.
     unseen_tasks_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
-    unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv'}#, 'IAG.csv', 'MM.csv', 'CF.csv']
+    unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv']#, 'IAG.csv', 'MM.csv', 'CF.csv']
     unseen_task_2_performance = {}
     for unseen_task in unseen_task_sequence:
         head_task = unseen_task
