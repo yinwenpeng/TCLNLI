@@ -456,7 +456,7 @@ def main():
         #     remove_columns=column_names,
         #     load_from_cache_file=not args.overwrite_cache,
         #     desc="Running tokenizer on training dataset",
-        )
+        # )
         processed_eval_dataset = raw_eval_dataset.map(
             preprocess_function,
             batched=True,
