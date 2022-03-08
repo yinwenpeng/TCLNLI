@@ -430,7 +430,7 @@ def main():
         inputs = [prefix + inp for inp in inputs]
         inputs = inputs[:10]
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
-        print('model_inputs:', model_inputs)
+        print('model_inputs:', model_inputs.keys())
         exit(0)
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
