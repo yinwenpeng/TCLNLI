@@ -456,14 +456,14 @@ def main():
     raw_eval_dataset = raw_datasets["validation"]#.select(range(100))
 
     with accelerator.main_process_first():
-        processed_train_dataset = raw_train_dataset.map(
-            preprocess_function,
-            batched=True,
-            num_proc=args.preprocessing_num_workers,
-            remove_columns=column_names,
-            load_from_cache_file=not args.overwrite_cache,
-            desc="Running tokenizer on training dataset",
-        )
+        # processed_train_dataset = raw_train_dataset.map(
+        #     preprocess_function,
+        #     batched=True,
+        #     num_proc=args.preprocessing_num_workers,
+        #     remove_columns=column_names,
+        #     load_from_cache_file=not args.overwrite_cache,
+        #     desc="Running tokenizer on training dataset",
+        # )
         processed_eval_dataset = raw_eval_dataset.map(
             preprocess_function,
             batched=True,
