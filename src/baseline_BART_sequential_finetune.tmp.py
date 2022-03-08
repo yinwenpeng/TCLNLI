@@ -539,7 +539,10 @@ def main():
 
     result = {k: round(v, 4) for k, v in result.items()}
 
+    logger.info(result)
+    
     rouge_L = result["rougeL"]
+
     print('rouge_L:', rouge_L)
 
 
