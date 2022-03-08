@@ -421,17 +421,17 @@ def main():
                 train_dataloader, eval_dataloader = accelerator.prepare(train_dataloader, eval_dataloader)
 
 
-                num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
-                if args.max_train_steps is None:
-                    args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
-                else:
-                    args.num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
+                # num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
+                # if args.max_train_steps is None:
+                #     args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
+                # else:
+                #     args.num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
 
                 lr_scheduler = get_scheduler(
                     name=args.lr_scheduler_type,
                     optimizer=optimizer,
                     num_warmup_steps=args.num_warmup_steps,
-                    num_training_steps=args.max_train_steps,
+                    num_training_steps=args.num_train_epochs*len(train_dataloader),
                 )
 
 
@@ -441,7 +441,7 @@ def main():
                 logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
                 logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
                 logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
-                logger.info(f"  Total optimization steps = {args.max_train_steps}")
+
 
                 # for epoch in range(args.num_train_epochs):
                 for epoch in trange(args.num_train_epochs, desc="train_epochs"):
@@ -456,7 +456,8 @@ def main():
                             optimizer.step()
                             lr_scheduler.step()
                             optimizer.zero_grad()
-                    store_model(accelerator, model, args.output_dir, tokenizer)
+
+            store_model(accelerator, model, args.output_dir, tokenizer)
 
             '''evaluting'''
             model.eval()
