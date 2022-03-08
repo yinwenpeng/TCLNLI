@@ -468,8 +468,7 @@ def main():
             desc="Running tokenizer on eval dataset",
         )
 
-    print('so far so good')
-    exit(0)
+
     train_dataset = processed_train_dataset
     eval_dataset = processed_eval_dataset
 
