@@ -511,7 +511,7 @@ def main():
 
             print('rouge_L:', rouge_L)
             head_task_performance_list.append(rouge_L)
-
+            accelerator.free_memory()
         assert len(head_task_performance_list) == repeat_times
         i_mean_std = computer_mean_std(head_task_performance_list)
         print(unseen_task, ' performance: ', i_mean_std)
