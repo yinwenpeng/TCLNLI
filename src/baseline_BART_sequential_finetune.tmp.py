@@ -364,7 +364,7 @@ def main():
             '''continual learning on task_sequence_for_evolve'''
             for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
                 data_files = {}
-                data_files["train"] = train_task_filename
+                data_files["train"] = unseen_tasks_path+train_task_filename
                 data_files["validation"] = test_file
                 raw_datasets = load_dataset("csv", data_files=data_files)
                 column_names = raw_datasets["train"].column_names
