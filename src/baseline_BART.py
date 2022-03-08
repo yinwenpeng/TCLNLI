@@ -427,7 +427,9 @@ def main():
     def preprocess_function(examples):
         inputs = examples[text_column]
         targets = examples[summary_column]
-        inputs = [str(prefix + inp) for inp in inputs]
+        inputs = [prefix + inp for inp in inputs]
+        print('inputs:', inputs)
+        exit(0)
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
 
         # Setup the tokenizer for targets
