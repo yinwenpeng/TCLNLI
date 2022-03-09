@@ -28,6 +28,7 @@ def MNLI_2_csvformat(filename):
     print('write over')
 
 def load_instruction_from_json_data(fil):
+
     '''
     return: instruction_text_part, instruction_pos_example_part, pos_examples_as_X&Y_format
     '''
@@ -62,6 +63,7 @@ def load_instruction_from_json_data(fil):
     neg_ex_tuple_list = []
     NEG = ''
     print('data["Examples"]["Negative Examples"]:', data["Examples"]["Negative Examples"])
+    print('fil:', fil)
     for id, ex in enumerate(data["Examples"]["Negative Examples"]):
         NEG+='[NEG'+str(id+1)+'] '
         print('ex:>>', ex)
