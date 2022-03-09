@@ -64,7 +64,7 @@ def load_instruction_from_json_data(fil):
     print('data["Examples"]["Negative Examples"]:', data["Examples"]["Negative Examples"])
     for id, ex in enumerate(data["Examples"]["Negative Examples"]):
         NEG+='[NEG'+str(id+1)+'] '
-        print('ex:>>', ex.encode('utf-8'))
+        print('ex:>>', ex)
         if (type(ex) is dict):
 
             print('ex input:>>', ex['input'].encode('utf-8').decode('utf-8'))
