@@ -63,13 +63,13 @@ def load_instruction_from_json_data(fil):
     NEG = ''
     for id, ex in enumerate(data["Examples"]["Negative Examples"]):
         NEG+='[NEG'+str(id+1)+'] '
-        if (ex.strip()=='-'):
-            continue
-        print('ex input:>>', ex['input'].encode('utf-8').decode('utf-8'))
-        print('ex output:>>', ex['output'])
-        neg_ex_tuple_list.append((ex['input'].replace('Question:', '[Question]').replace('\n', ' ').strip(), ex['output'].strip()))
-        for key, value in ex.items():
-            NEG+='['+key.strip()+'] '+value.strip()+' '
+        if (type(ex) is dict):
+
+            print('ex input:>>', ex['input'].encode('utf-8').decode('utf-8'))
+            print('ex output:>>', ex['output'])
+            neg_ex_tuple_list.append((ex['input'].replace('Question:', '[Question]').replace('\n', ' ').strip(), ex['output'].strip()))
+            for key, value in ex.items():
+                NEG+='['+key.strip()+'] '+value.strip()+' '
 
     INSTRUCTION_neg_example_part = NEG.strip().replace('\n', ' ')
 
