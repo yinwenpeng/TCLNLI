@@ -64,7 +64,7 @@ def load_instruction_from_json_data(fil):
     NEG = ''
     print('fil:', fil)
     for key, value in data["Examples"].items():
-        print('key:', key)
+        print('key:', key, value)
 
     exit(0)
     print('data["Examples"]["Negative Examples"]:', data["Examples"]["Negative Examples"])
