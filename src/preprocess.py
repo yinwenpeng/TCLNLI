@@ -62,8 +62,9 @@ def load_instruction_from_json_data(fil):
 
     neg_ex_tuple_list = []
     NEG = ''
-    print('data["Examples"]["Negative Examples"]:', data["Examples"]["Negative Examples"])
     print('fil:', fil)
+    print('data["Examples"]["Negative Examples"]:', data["Examples"]["Negative Examples"])
+
     for id, ex in enumerate(data["Examples"]["Negative Examples"]):
         NEG+='[NEG'+str(id+1)+'] '
         print('ex:>>', ex)
