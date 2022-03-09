@@ -198,6 +198,25 @@ def generate_negative_training_examples_from_instruction(input_folder, output_fo
         print(fil, ' convert over...')
     print('Done!')
 
+def merge_multiple_csv_files(input_folder, output_file):
+    csvfile = codecs.open(output_file, 'w', 'utf-8')
+    fieldnames = ['input', 'output']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+
+
+    file_set = set(os.listdir(input_folder))
+    for single_fil in file_set:
+        read_fil = codecs.open(input_folder+single_fil, 'r', 'utf-8')
+        read_file = csv.DictReader(read_fil)
+        print(len(read_file), single_fil)
+        for row in read_file:
+            dict_row = dict(row)
+            writer.writerow({'input': dict_row['input'].strip(), 'output': dict_row['output'].strip()})
+        read_fil.close()
+    csvfile.close()
+    print('merge over')
+
 
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
@@ -223,4 +242,5 @@ if __name__ == '__main__':
     # merge_test_tasks_into_one_category(test_csv_path, ['subtask034_winogrande_question_modification_object.csv', 'subtask045_miscellaneous_sentence_paraphrasing.csv'], 'MM.csv')
     # merge_test_tasks_into_one_category(test_csv_path, ['subtask039_qasc_find_overlapping_words.csv', 'subtask044_essential_terms_identifying_essential_words.csv'], 'VF.csv')
 
-    generate_negative_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv')
+    # generate_negative_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv')
+    merge_multiple_csv_files('/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv')
