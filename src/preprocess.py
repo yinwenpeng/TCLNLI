@@ -70,7 +70,7 @@ def load_instruction_from_json_data(fil):
                 for key, value in ex.items():
                     NEG+='['+key.strip()+'] '+value.strip()+' '
     else:
-        print(fil, ' does not have negative examples...')
+        print('>>>>>> ', fil, ' does not have negative examples...')
     INSTRUCTION_neg_example_part = NEG.strip().replace('\n', ' ')
 
     f.close()
