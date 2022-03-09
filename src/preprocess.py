@@ -209,7 +209,6 @@ def merge_multiple_csv_files(input_folder, output_file):
     for single_fil in file_set:
         read_fil = codecs.open(input_folder+'/'+single_fil, 'r', 'utf-8')
         read_file = csv.DictReader(read_fil)
-        print(read_file)
         for row in read_file:
             dict_row = dict(row)
             writer.writerow({'input': dict_row['input'].strip(), 'output': dict_row['output'].strip()})
