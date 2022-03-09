@@ -207,7 +207,7 @@ def merge_multiple_csv_files(input_folder, output_file):
 
     file_set = set(os.listdir(input_folder))
     for single_fil in file_set:
-        read_fil = codecs.open(input_folder+single_fil, 'r', 'utf-8')
+        read_fil = codecs.open(input_folder+'/'+single_fil, 'r', 'utf-8')
         read_file = csv.DictReader(read_fil)
         print(len(read_file), single_fil)
         for row in read_file:
