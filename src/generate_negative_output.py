@@ -32,7 +32,7 @@ import torch
 from datasets import load_dataset, load_metric
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
-
+import statistics
 import transformers
 from accelerate import Accelerator
 from filelock import FileLock
@@ -98,9 +98,6 @@ def parse_args():
         type=str,
         default=None,
         help="The configuration name of the dataset to use (via the datasets library).",
-    )
-    parser.add_argument(
-        "--train_file", type=str, default=None, help="A csv or a json file containing the training data."
     )
     parser.add_argument(
         "--validation_file", type=str, default=None, help="A csv or a json file containing the validation data."
@@ -263,21 +260,6 @@ def parse_args():
     )
     parser.add_argument("--hub_token", type=str, help="The token to use to push to the Model Hub.")
     args = parser.parse_args()
-
-    # Sanity checks
-    if args.dataset_name is None and args.train_file is None and args.validation_file is None:
-        raise ValueError("Need either a dataset name or a training/validation file.")
-    else:
-        if args.train_file is not None:
-            extension = args.train_file.split(".")[-1]
-            assert extension in ["csv", "json"], "`train_file` should be a csv or a json file."
-        if args.validation_file is not None:
-            extension = args.validation_file.split(".")[-1]
-            assert extension in ["csv", "json"], "`validation_file` should be a csv or a json file."
-
-    if args.push_to_hub:
-        assert args.output_dir is not None, "Need an `output_dir` to create a repo when `--push_to_hub` is passed."
-
     return args
 
 
@@ -336,100 +318,57 @@ def main():
             os.makedirs(args.output_dir, exist_ok=True)
     accelerator.wait_for_everyone()
 
-    # Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)
-    # or just provide the name of one of the public datasets available on the hub at https://huggingface.co/datasets/
-    # (the dataset will be downloaded automatically from the datasets Hub).
-    #
-    # For CSV/JSON files, this script will use the column called 'text' or the first column if no column called
-    # 'text' is found. You can easily tweak this behavior (see below).
-    #
-    # In distributed training, the load_dataset function guarantee that only one local process can concurrently
-    # download the dataset.
-    if args.dataset_name is not None:
-        # Downloading and loading a dataset from the hub.
-        raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name)
-    else:
-        data_files = {}
-        if args.train_file is not None:
-            data_files["train"] = args.train_file
-        if args.validation_file is not None:
-            data_files["validation"] = args.validation_file
-        extension = args.train_file.split(".")[-1]
-        raw_datasets = load_dataset(extension, data_files=data_files)
-    # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
-    # https://huggingface.co/docs/datasets/loading_datasets.html.
 
-    # Load pretrained model and tokenizer
-    #
-    # In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently
-    # download model & vocab.
-    if args.config_name:
-        config = AutoConfig.from_pretrained(args.config_name)
-    elif args.model_name_or_path:
-        config = AutoConfig.from_pretrained(args.model_name_or_path)
-    else:
-        config = CONFIG_MAPPING[args.model_type]()
-        logger.warning("You are instantiating a new config instance from scratch.")
-
-    if args.tokenizer_name:
-        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_fast=not args.use_slow_tokenizer)
-    elif args.model_name_or_path:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
-    else:
-        raise ValueError(
-            "You are instantiating a new tokenizer from scratch. This is not supported by this script."
-            "You can do it from another script, save it, and load it from here, using --tokenizer_name."
-        )
-
-    if args.model_name_or_path:
-        model = AutoModelForSeq2SeqLM.from_pretrained(
+    config = AutoConfig.from_pretrained(args.model_name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
+    model = AutoModelForSeq2SeqLM.from_pretrained(
             args.model_name_or_path,
             from_tf=bool(".ckpt" in args.model_name_or_path),
-            config=config,
-        )
-    else:
-        logger.info("Training new model from scratch")
-        model = AutoModelForSeq2SeqLM.from_config(config)
+            config=config)
 
     model.resize_token_embeddings(len(tokenizer))
     if model.config.decoder_start_token_id is None:
         raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
+    no_decay = ["bias", "LayerNorm.weight"]
+    optimizer_grouped_parameters = [
+        {
+            "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+            "weight_decay": args.weight_decay,
+        },
+        {
+            "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+            "weight_decay": 0.0,
+        },
+    ]
+    # optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+    metric = load_metric("rouge")
+    total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
+    model = accelerator.prepare(model)
 
-    prefix = args.source_prefix if args.source_prefix is not None else ""
-
-    # Preprocessing the datasets.
-    # First we tokenize all the texts.
-    column_names = raw_datasets["train"].column_names
-
-    # Get the column names for input/target.
-    dataset_columns = summarization_name_mapping.get(args.dataset_name, None)
-    if args.text_column is None:
-        text_column = dataset_columns[0] if dataset_columns is not None else column_names[0]
-    else:
-        text_column = args.text_column
-        if text_column not in column_names:
-            raise ValueError(
-                f"--text_column' value '{args.text_column}' needs to be one of: {', '.join(column_names)}"
-            )
-    if args.summary_column is None:
-        summary_column = dataset_columns[1] if dataset_columns is not None else column_names[1]
-    else:
-        summary_column = args.summary_column
-        if summary_column not in column_names:
-            raise ValueError(
-                f"--summary_column' value '{args.summary_column}' needs to be one of: {', '.join(column_names)}"
-            )
+    '''then, start to prepare data'''
+    # random.shuffle(subsequent_task_list)
+    # task_sequence_for_evolve = [head_task]+subsequent_task_list
+    # print('task_sequence_for_evolve:', task_sequence_for_evolve)
+    # '''continual learning on task_sequence_for_evolve'''
+    # for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
+    #     data_files = {}
+    #     data_files["train"] = unseen_tasks_path+train_task_filename
+    data_files["validation"] = args.validation_file
+    raw_datasets = load_dataset("csv", data_files=data_files)
+    column_names = raw_datasets["validation"].column_names
+    text_column = column_names[0]
+    summary_column = column_names[1]
 
     # Temporarily set max_target_length for training.
     max_target_length = args.max_target_length
     padding = "max_length" if args.pad_to_max_length else False
 
     def preprocess_function(examples):
+        '''tokenize, padding'''
         inputs = examples[text_column]
         targets = examples[summary_column]
-        inputs = [prefix + inp for inp in inputs]
-        targets = [ prefix + inp  if inp is not None else "none" for inp in targets]
-        #model_inputs: dict_keys(['input_ids', 'attention_mask'])
+        '''avoid NoneType in target'''
+        targets = [inp  if inp is not None else "none" for inp in targets]
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
 
         # Setup the tokenizer for targets
@@ -446,35 +385,17 @@ def main():
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
 
-
-    raw_train_dataset =  raw_datasets["train"]#.select(range(200))
-    raw_eval_dataset = raw_datasets["validation"]#.select(range(100))
-
     with accelerator.main_process_first():
-        processed_train_dataset = raw_train_dataset.map(
+        tokenized_dataset = raw_datasets.map(
             preprocess_function,
             batched=True,
             num_proc=args.preprocessing_num_workers,
             remove_columns=column_names,
             load_from_cache_file=not args.overwrite_cache,
-            desc="Running tokenizer on training dataset",
+            desc="Running tokenizer on dataset",
         )
-        processed_eval_dataset = raw_eval_dataset.map(
-            preprocess_function,
-            batched=True,
-            num_proc=args.preprocessing_num_workers,
-            remove_columns=column_names,
-            load_from_cache_file=not args.overwrite_cache,
-            desc="Running tokenizer on eval dataset",
-        )
-
-
-    train_dataset = processed_train_dataset
-    eval_dataset = processed_eval_dataset
-
-    # Log a few random samples from the training set:
-    for index in random.sample(range(len(train_dataset)), 1):
-        logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
+    # train_dataset = tokenized_dataset["train"]
+    eval_dataset = tokenized_dataset["validation"]#.select(range(200))
 
     label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
     data_collator = DataCollatorForSeq2Seq(
@@ -484,93 +405,15 @@ def main():
         pad_to_multiple_of=8 if accelerator.use_fp16 else None,
     )
 
-    def postprocess_text(preds, labels):
-        preds = [pred.strip() for pred in preds]
-        labels = [label.strip() for label in labels]
-
-        # rougeLSum expects newline after each sentence
-        preds = ["\n".join(nltk.sent_tokenize(pred)) for pred in preds]
-        labels = ["\n".join(nltk.sent_tokenize(label)) for label in labels]
-
-        return preds, labels
-
-    train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size
-    )
+    # train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
     eval_dataloader = DataLoader(eval_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
 
-    # Optimizer
-    # Split weights in two groups, one with weight decay and the other not.
-    no_decay = ["bias", "LayerNorm.weight"]
-    optimizer_grouped_parameters = [
-        {
-            "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-            "weight_decay": args.weight_decay,
-        },
-        {
-            "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-            "weight_decay": 0.0,
-        },
-    ]
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+    eval_dataloader = accelerator.prepare(eval_dataloader)
 
-    # Prepare everything with our `accelerator`.
-    model, optimizer, train_dataloader, eval_dataloader = accelerator.prepare(
-        model, optimizer, train_dataloader, eval_dataloader
-    )
 
-    # Note -> the training dataloader needs to be prepared before we grab his length below (cause its length will be
-    # shorter in multiprocess)
+    logger.info("***** Running prediction *****")
+    logger.info(f"  Num examples = {len(eval_dataset)}")
 
-    # Scheduler and math around the number of training steps.
-    num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
-    if args.max_train_steps is None:
-        args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
-    else:
-        args.num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
-
-    lr_scheduler = get_scheduler(
-        name=args.lr_scheduler_type,
-        optimizer=optimizer,
-        num_warmup_steps=args.num_warmup_steps,
-        num_training_steps=args.max_train_steps,
-    )
-
-    # Metric
-    metric = load_metric("rouge")
-
-    # Train!
-    total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-
-    logger.info("***** Running training *****")
-    logger.info(f"  Num examples = {len(train_dataset)}")
-    logger.info(f"  Num Epochs = {args.num_train_epochs}")
-    logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
-    logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-    logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
-    logger.info(f"  Total optimization steps = {args.max_train_steps}")
-    # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(args.max_train_steps), disable=not accelerator.is_local_main_process)
-    completed_steps = 0
-
-    # for epoch in range(args.num_train_epochs):
-    for epoch in trange(args.num_train_epochs, desc="train_epochs"):
-        model.train()
-        for step, batch in enumerate(train_dataloader):
-            outputs = model(**batch)
-            loss = outputs.loss
-            loss = loss / args.gradient_accumulation_steps
-            # print('training loss:', loss)
-            accelerator.backward(loss)
-            if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
-                progress_bar.update(1)
-                completed_steps += 1
-
-            if completed_steps >= args.max_train_steps:
-                break
-        store_model(accelerator, model, args.output_dir, tokenizer)
     '''evaluting'''
     model.eval()
     if args.val_max_target_length is None:
@@ -580,7 +423,9 @@ def main():
         "max_length": args.val_max_target_length if args is not None else config.max_length,
         "num_beams": args.num_beams,
     }
-    # for step, batch in enumerate(eval_dataloader):
+
+
+    negative_prediction_list = []
     for step, batch in enumerate(tqdm(eval_dataloader, desc="Evaluating")):
         with torch.no_grad():
             generated_tokens = accelerator.unwrap_model(model).generate(
@@ -609,15 +454,23 @@ def main():
             decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
             decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+            print('decoded_preds:', decoded_preds)
+            print('decoded_labels:', decoded_labels)
+            exit(0)
 
-            metric.add_batch(predictions=decoded_preds, references=decoded_labels)
+            metric.add_batch(predictions=c, references=decoded_labels)
     result = metric.compute(use_stemmer=True)
     # Extract a few results from ROUGE
     result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
 
     result = {k: round(v, 4) for k, v in result.items()}
 
-    logger.info(result)
+    # logger.info(result)
+
+    rouge_L = result["rougeL"]
+
+    print('rouge_L:', rouge_L)
+
 
 
 def store_model(accele, model, output_dir, tokenizer):
@@ -628,13 +481,17 @@ def store_model(accele, model, output_dir, tokenizer):
         tokenizer.save_pretrained(output_dir)
     print('Model saved.')
 
+def postprocess_text(preds, labels):
+    preds = [pred.strip() for pred in preds]
+    labels = [label.strip() for label in labels]
 
-    # if args.output_dir is not None:
-    #     accelerator.wait_for_everyone()
-    #     unwrapped_model = accelerator.unwrap_model(model)
-    #     unwrapped_model.save_pretrained(args.output_dir, save_function=accelerator.save)
-    #     if accelerator.is_main_process:
-    #         tokenizer.save_pretrained(args.output_dir)
+    # rougeLSum expects newline after each sentence
+    preds = ["\n".join(nltk.sent_tokenize(pred)) for pred in preds]
+    labels = ["\n".join(nltk.sent_tokenize(label)) for label in labels]
+
+    return preds, labels
+
+
 
 
 if __name__ == "__main__":
@@ -642,21 +499,10 @@ if __name__ == "__main__":
 
 
 '''
-training:
-CUDA_VISIBLE_DEVICES="0,1,2,3" accelerate launch baseline_BART.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3 > log.v2.txt 2>&1
 
-evaluation only:
-CUDA_VISIBLE_DEVICES=1 accelerate launch baseline_BART.py --model_name_or_path /home/tup51337/tmp/tmp --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/MM.csv --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 0 --learning_rate 5e-5 --preprocessing_num_workers 3
+"sequential finetune on instructions"
+CUDA_VISIBLE_DEVICES=2 accelerate launch generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp4 --per_device_train_batch_size=2 --per_device_eval_batch_size=4  
 
-
-
-"finetune on instructions"
-CUDA_VISIBLE_DEVICES=1 python -u baseline_BART.v2.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/QG.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=3 --per_device_eval_batch_size=32 --num_train_epochs 2 --learning_rate 2e-5
-
-"finetune on negative examples of 49 training tasks"
-CUDA_VISIBLE_DEVICES=1 python -u baseline_BART.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv --output_dir /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --per_device_train_batch_size=3 --per_device_eval_batch_size=16 --num_train_epochs 10 --learning_rate 5e-5
-w/o pos infor: {'rouge1': 88.7011, 'rouge2': 65.0175, 'rougeL': 87.8686, 'rougeLsum': 88.3124}
-w/ pos infor: {'rouge1': 86.5464, 'rouge2': 62.9581, 'rougeL': 85.9967, 'rougeLsum': 86.4834}
 
 
 '''
