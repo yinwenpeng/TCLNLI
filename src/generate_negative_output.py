@@ -474,7 +474,7 @@ def main():
 
     mismatch_size = 0
     for i in range(len(negative_prediction_list)):
-        writer.writerow({'input': positive_prediction_list[i].strip(), 'output': negative_prediction_list[i].strip()})
+        writer.writerow({'positive': positive_prediction_list[i].strip(), 'negative': negative_prediction_list[i].strip()})
         if negative_prediction_list[i]!=positive_prediction_list[i]:
             mismatch_size+=1
     print('mismatch_size: ', mismatch_size)
