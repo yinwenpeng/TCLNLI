@@ -654,7 +654,8 @@ CUDA_VISIBLE_DEVICES=1 accelerate launch baseline_BART.py --model_name_or_path /
 CUDA_VISIBLE_DEVICES=1 python -u baseline_BART.v2.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/QG.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=3 --per_device_eval_batch_size=32 --num_train_epochs 2 --learning_rate 2e-5
 
 "finetune on negative examples of 49 training tasks"
-CUDA_VISIBLE_DEVICES=0 python -u baseline_BART.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv --output_dir /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --per_device_train_batch_size=3 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5
+CUDA_VISIBLE_DEVICES=0 python -u baseline_BART.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv --output_dir /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --per_device_train_batch_size=3 --per_device_eval_batch_size=16 --num_train_epochs 10 --learning_rate 5e-5
+{'rouge1': 88.7011, 'rouge2': 65.0175, 'rougeL': 87.8686, 'rougeLsum': 88.3124}
 
 
 '''
