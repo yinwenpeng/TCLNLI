@@ -401,7 +401,6 @@ def main():
         )
     # train_dataset = tokenized_dataset["train"]
     eval_dataset = tokenized_dataset["validation"]#.select(range(200))
-    eval_dataset = eval_dataset[:100]
     label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
     data_collator = DataCollatorForSeq2Seq(
         tokenizer,
@@ -465,6 +464,7 @@ def main():
             # exit(0)
             negative_prediction_list+=decoded_preds
             positive_prediction_list+=decoded_labels
+            break
 
 
     csvfile = codecs.open(args.output_file, 'w', 'utf-8')
@@ -511,7 +511,7 @@ if __name__ == "__main__":
 '''
 
 "sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=0 python -u generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --output_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.csv --per_device_train_batch_size=2 --per_device_eval_batch_size=20 > log.generate_negative_for_49.3.10.22.bigger.batch.size.txt 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --output_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.csv --per_device_train_batch_size=2 --per_device_eval_batch_size=40 > log.generate_negative_for_49.3.10.22.bigger.batch.size.txt 2>&1
 
 
 
