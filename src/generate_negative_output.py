@@ -464,7 +464,6 @@ def main():
             # exit(0)
             negative_prediction_list+=decoded_preds
             positive_prediction_list+=decoded_labels
-            break
 
 
     csvfile = codecs.open(args.output_file, 'w', 'utf-8')
