@@ -33,6 +33,7 @@ from datasets import load_dataset, load_metric
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 import statistics
+import codecs
 import transformers
 from accelerate import Accelerator
 from filelock import FileLock
@@ -509,7 +510,7 @@ if __name__ == "__main__":
 '''
 
 "sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=2 accelerate launch generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --output_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.csv --per_device_train_batch_size=2 --per_device_eval_batch_size=40
+CUDA_VISIBLE_DEVICES=2 accelerate launch generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --output_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.csv --per_device_train_batch_size=2 --per_device_eval_batch_size=10
 
 
 
