@@ -551,8 +551,8 @@ if __name__ == "__main__":
 
 '''
 
-"finetune on instructions"
-CUDA_VISIBLE_DEVICES=0 accelerate launch baseline_BART_sequential_finetune_backward_transfer.py --model_name_or_path /home/tup51337/tmp/tmp --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 > log.finetune.txt 2>&1
+"sequential finetune on instructions"
+CUDA_VISIBLE_DEVICES=0 accelerate launch baseline_BART_sequential_finetune_backward_transfer.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 > log.finetune.backward.txt 2>&1
 
 
 
