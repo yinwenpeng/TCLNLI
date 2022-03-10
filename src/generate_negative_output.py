@@ -99,6 +99,10 @@ def parse_args():
         default=None,
         help="The configuration name of the dataset to use (via the datasets library).",
     )
+    output_file
+    parser.add_argument(
+        "--output_file", type=str, default=None, help="A csv or a json file containing the validation data."
+    )
     parser.add_argument(
         "--validation_file", type=str, default=None, help="A csv or a json file containing the validation data."
     )
@@ -426,6 +430,7 @@ def main():
 
 
     negative_prediction_list = []
+    positive_prediction_list = []
     for step, batch in enumerate(tqdm(eval_dataloader, desc="Evaluating")):
         with torch.no_grad():
             generated_tokens = accelerator.unwrap_model(model).generate(
@@ -454,22 +459,26 @@ def main():
             decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
             decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
-            print('decoded_preds:', decoded_preds)
-            print('decoded_labels:', decoded_labels)
-            exit(0)
+            # print('decoded_preds:', decoded_preds)
+            # print('decoded_labels:', decoded_labels)
+            # exit(0)
+            negative_prediction_list+=decoded_preds
+            positive_prediction_list+=decoded_labels
 
-            metric.add_batch(predictions=c, references=decoded_labels)
-    result = metric.compute(use_stemmer=True)
-    # Extract a few results from ROUGE
-    result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
 
-    result = {k: round(v, 4) for k, v in result.items()}
+    csvfile = codecs.open(args.output_file, 'w', 'utf-8')
+    fieldnames = ['positive', 'negative']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
 
-    # logger.info(result)
-
-    rouge_L = result["rougeL"]
-
-    print('rouge_L:', rouge_L)
+    mismatch_size = 0
+    for i in range(len(negative_prediction_list)):
+        writer.writerow({'input': positive_prediction_list[i].strip(), 'output': negative_prediction_list[i].strip()})
+        if negative_prediction_list[i]!=positive_prediction_list[i]:
+            mismatch_size+=1
+    print('mismatch_size: ', mismatch_size)
+    csvfile.close()
+    print('write over.')
 
 
 
@@ -501,7 +510,7 @@ if __name__ == "__main__":
 '''
 
 "sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=2 accelerate launch generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --per_device_train_batch_size=2 --per_device_eval_batch_size=4
+CUDA_VISIBLE_DEVICES=2 accelerate launch generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --output_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.csv --per_device_train_batch_size=2 --per_device_eval_batch_size=4
 
 
 
