@@ -351,7 +351,7 @@ def main():
     # print('task_sequence_for_evolve:', task_sequence_for_evolve)
     # '''continual learning on task_sequence_for_evolve'''
     # for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
-    #     data_files = {}
+    data_files = {}
     #     data_files["train"] = unseen_tasks_path+train_task_filename
     data_files["validation"] = args.validation_file
     raw_datasets = load_dataset("csv", data_files=data_files)
@@ -501,7 +501,7 @@ if __name__ == "__main__":
 '''
 
 "sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=2 accelerate launch generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp4 --per_device_train_batch_size=2 --per_device_eval_batch_size=4  
+CUDA_VISIBLE_DEVICES=2 accelerate launch generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --per_device_train_batch_size=2 --per_device_eval_batch_size=4
 
 
 
