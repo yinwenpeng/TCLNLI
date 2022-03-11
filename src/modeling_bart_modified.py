@@ -1335,7 +1335,8 @@ class BartForConditionalGeneration(BartPretrainedModel):
 
             #view(-1) doesnt work, so use reshape
             neg_masked_lm_loss = loss_fct(reverse_logits, torch.reshape(neg_labels, (-1,)))
-            masked_lm_loss+=neg_masked_lm_loss
+            alpha=0.1
+            masked_lm_loss=(1.0-alpha)*masked_lm_loss+alpha*neg_masked_lm_loss
 
         if not return_dict:
             output = (lm_logits,) + outputs[1:]
