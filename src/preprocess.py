@@ -227,7 +227,7 @@ def load_negative_output(fil):
     read_fil.close()
     return tuple_list
 
-def merge_standard_csv_with_negative_output_into_csv_of_three_cols(origin_file, neg_file, output_file):
+def merge_standard_csv_with_negative_output_into_csv(origin_file, neg_file, output_file):
     read_fil = codecs.open(origin_file, 'r', 'utf-8')
     read_file = csv.DictReader(read_fil)
     tuple_list = []
@@ -239,12 +239,12 @@ def merge_standard_csv_with_negative_output_into_csv_of_three_cols(origin_file, 
     assert len(tuple_list) == len(neg_tuple_list)
 
     csvfile = codecs.open(output_file, 'w', 'utf-8')
-    fieldnames = ['input', 'output', 'neg_output']
+    fieldnames = ['input', 'output']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     for i in range(len(tuple_list)):
         if neg_tuple_list[i][0]!= neg_tuple_list[i][1]:
-            writer.writerow({'input': tuple_list[i][0].strip(), 'output': tuple_list[i][1].strip(), 'neg_output': neg_tuple_list[i][1].strip()})
+            writer.writerow({'input': tuple_list[i][0].strip(), 'output': tuple_list[i][1].strip()+' &&& '+ neg_tuple_list[i][1].strip()})
     csvfile.close()
     print('merge over')
 
@@ -275,4 +275,4 @@ if __name__ == '__main__':
     # generate_negative_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv')
     # merge_multiple_csv_files('/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv')
 
-    merge_standard_csv_with_negative_output_into_csv_of_three_cols('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.batch40.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.three.cols.csv')
+    merge_standard_csv_with_negative_output_into_csv('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.batch40.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv')
