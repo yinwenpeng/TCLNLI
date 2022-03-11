@@ -551,8 +551,7 @@ def main():
     for epoch in trange(args.num_train_epochs, desc="train_epochs"):
         model.train()
         for step, batch in enumerate(train_dataloader):
-            print('batch:', batch)
-            
+
             outputs = model(**batch)
             loss = outputs.loss
             loss = loss / args.gradient_accumulation_steps
