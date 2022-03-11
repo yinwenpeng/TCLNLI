@@ -646,6 +646,7 @@ if __name__ == "__main__":
     main()
 
 
+
 '''
 
 CUDA_VISIBLE_DEVICES="0,2" accelerate launch InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetuned_BART_on_pos_and_neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3 > log.finetune.on.pos.and.neg.txt 2>&1
