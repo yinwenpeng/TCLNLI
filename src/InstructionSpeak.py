@@ -63,7 +63,7 @@ class DataCollatorForSeq2Seq:
         self.model=model#: Optional[Any] = None
         self.padding=padding#: Union[bool, str, PaddingStrategy] = True
         self.max_length=max_length#: Optional[int] = None
-        self.pad_to_multiple_of=v#: Optional[int] = None
+        self.pad_to_multiple_of=pad_to_multiple_of#: Optional[int] = None
         self.label_pad_token_id=label_pad_token_id#: int = -100
         self.return_tensors=return_tensors#: str = "pt"
 
