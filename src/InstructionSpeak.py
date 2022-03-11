@@ -58,7 +58,7 @@ from typing import Optional, Any, Union
 
 class DataCollatorForSeq2Seq:
 
-    def __init__(self, tokenizer, model, padding, max_length, pad_to_multiple_of, label_pad_token_id, return_tensors):
+    def __init__(self, tokenizer=None, model=None, padding=True, max_length=None, pad_to_multiple_of=None, label_pad_token_id=-100, return_tensors="pt"):
         self.tokenizer=tokenizer#: transformers.PreTrainedTokenizerBase
         self.model=model#: Optional[Any] = None
         self.padding=padding#: Union[bool, str, PaddingStrategy] = True
