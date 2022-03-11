@@ -1323,6 +1323,7 @@ class BartForConditionalGeneration(BartPretrainedModel):
             print('labels.shape:', labels.size())
             print('neg_labels.shape:', neg_labels.size(), neg_labels.dtype)
             '''1.0-logits'''
+            print('neg_labels.size():', neg_labels.size()[0])
             print('neg_labels:', neg_labels)
             truncate_neg_labels=neg_labels[:,:2]
             print('new neg_labels.shape:', truncate_neg_labels.size())
