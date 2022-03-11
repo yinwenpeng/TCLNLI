@@ -73,6 +73,7 @@ class DataCollatorForSeq2Seq:
         if return_tensors is None:
             return_tensors = self.return_tensors
         labels = [feature["labels"] for feature in features] if "labels" in features[0].keys() else None
+        neg_labels = [feature["neg_labels"] for feature in features] if "neg_labels" in features[0].keys() else None
         # We have to pad the labels before calling `tokenizer.pad` as this method won't pad them and needs them of the
         # same length to return tensors.
         if labels is not None:
@@ -88,6 +89,21 @@ class DataCollatorForSeq2Seq:
                     feature["labels"] = np.concatenate([feature["labels"], remainder]).astype(np.int64)
                 else:
                     feature["labels"] = np.concatenate([remainder, feature["labels"]]).astype(np.int64)
+        '''negative labels'''
+        if neg_labels is not None:
+            max_label_length = max(len(l) for l in neg_labels)
+            padding_side = self.tokenizer.padding_side
+            for feature in features:
+                remainder = [self.label_pad_token_id] * (max_label_length - len(feature["neg_labels"]))
+                if isinstance(feature["neg_labels"], list):
+                    feature["neg_labels"] = (
+                        feature["neg_labels"] + remainder if padding_side == "right" else remainder + feature["neg_labels"]
+                    )
+                elif padding_side == "right":
+                    feature["neg_labels"] = np.concatenate([feature["neg_labels"], remainder]).astype(np.int64)
+                else:
+                    feature["neg_labels"] = np.concatenate([remainder, feature["neg_labels"]]).astype(np.int64)
+
 
         features = self.tokenizer.pad(
             features,
