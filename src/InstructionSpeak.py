@@ -378,6 +378,7 @@ def main():
     def preprocess_function(examples):
         '''tokenize, padding'''
         inputs = examples[text_column]
+        print('inputs:', inputs)
         pos_and_neg_targets = examples[summary_column]
         neg_exist_flag = False
         if pos_and_neg_targets[0].find(' &&& ') >=0:
