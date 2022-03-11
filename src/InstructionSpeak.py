@@ -402,7 +402,7 @@ def main():
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
-        neg_labels=None
+
         if neg_exist_flag:
             with tokenizer.as_target_tokenizer():
                 neg_labels = tokenizer(neg_targets, max_length=max_target_length, padding=padding, truncation=True)
@@ -418,7 +418,8 @@ def main():
                 neg_labels["input_ids"] = [
                     [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in neg_labels["input_ids"]
                 ]
-        print('neg_labels["input_ids"]:', neg_labels["input_ids"])
+        if neg_exist_flag:
+            print('neg_labels["input_ids"]:', neg_labels["input_ids"])
         model_inputs["labels"] = labels["input_ids"]
         # if neg_exist_flag:
         #     model_inputs["neg_labels"] = neg_labels["input_ids"]
