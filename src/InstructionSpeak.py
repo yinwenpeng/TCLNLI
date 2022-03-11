@@ -420,12 +420,12 @@ def main():
                 ]
         if neg_exist_flag:
             print('neg_labels["input_ids"]:', neg_labels["input_ids"])
-        model_inputs["labels"] = labels["input_ids"]
-        # if neg_exist_flag:
-        #     model_inputs["neg_labels"] = neg_labels["input_ids"]
-        # else:
-        #     model_inputs["neg_labels"] = labels["input_ids"]
-        model_inputs["neg_labels"] = labels["input_ids"]
+        # model_inputs["labels"] = labels["input_ids"]
+        if neg_exist_flag:
+            model_inputs["labels"] = neg_labels["input_ids"]
+        else:
+            model_inputs["labels"] = labels["input_ids"]
+
         return model_inputs
 
     with accelerator.main_process_first():
