@@ -362,6 +362,7 @@ def main():
     data_files["train"] = args.train_file
     data_files["validation"] = args.validation_file
     raw_datasets = load_dataset("csv", data_files=data_files)
+    print('raw_datasets["train"]:', raw_datasets["train"])
     column_names = raw_datasets["train"].column_names
     text_column = column_names[0]
     summary_column = column_names[1]
