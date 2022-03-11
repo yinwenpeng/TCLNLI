@@ -62,7 +62,7 @@ class DataCollatorForSeq2Seq(tokenizer,
     max_length  = None,
     pad_to_multiple_of  = None,
     label_pad_token_id  = -100,
-    return_tensors = "pt")
+    return_tensors = "pt"):
 
     def __call__(self, features, return_tensors=None):
         import numpy as np
