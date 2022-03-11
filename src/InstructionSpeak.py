@@ -54,7 +54,7 @@ from preprocess import load_negative_output
 from transformers.file_utils import get_full_repo_name, is_offline_mode, PaddingStrategy
 from transformers.utils.versions import require_version
 
-from typing import Optional
+from typing import Optional, Any
 
 class DataCollatorForSeq2Seq:
     """
