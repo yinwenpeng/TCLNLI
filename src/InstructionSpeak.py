@@ -422,6 +422,7 @@ def main():
         #     model_inputs["neg_labels"] = neg_labels["input_ids"]
         # else:
         #     model_inputs["neg_labels"] = labels["input_ids"]
+        model_inputs["neg_labels"] = labels["input_ids"]
         return model_inputs
 
     with accelerator.main_process_first():
