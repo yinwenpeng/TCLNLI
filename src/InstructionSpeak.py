@@ -380,7 +380,7 @@ def main():
         inputs = examples[text_column]
         pos_and_neg_targets = examples[summary_column]
         neg_exist_flag = False
-        if pos_and_neg_targets[0].index(' &&& ') >=0:
+        if pos_and_neg_targets[0].find(' &&& ') >=0:
             neg_exist_flag=True
 
         targets = []
