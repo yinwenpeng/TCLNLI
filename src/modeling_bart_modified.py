@@ -1323,10 +1323,10 @@ class BartForConditionalGeneration(BartPretrainedModel):
             print('labels.shape:', labels.size())
             print('neg_labels.shape:', neg_labels.size(), neg_labels.dtype)
             '''1.0-logits'''
-            neg_labels=neg_labels[:,labels.size[1]]
-            print('new neg_labels.shape:', neg_labels.size())
+            truncate_neg_labels=neg_labels[:,labels.size[1]]
+            print('new neg_labels.shape:', truncate_neg_labels.size())
             exit(0)
-            neg_masked_lm_loss = loss_fct((1.0-lm_logits.view(-1, self.config.vocab_size)), neg_labels.view(-1))
+            neg_masked_lm_loss = loss_fct((1.0-lm_logits.view(-1, self.config.vocab_size)), truncate_neg_labels.view(-1))
             masked_lm_loss+=neg_masked_lm_loss
 
         if not return_dict:
