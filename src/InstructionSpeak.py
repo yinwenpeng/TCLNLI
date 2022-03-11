@@ -362,11 +362,9 @@ def main():
     data_files["train"] = args.train_file
     data_files["validation"] = args.validation_file
     raw_datasets = load_dataset("csv", data_files=data_files)
-    print('raw_datasets["train"]:', raw_datasets["train"])
     column_names = raw_datasets["train"].column_names
     text_column = column_names[0]
     summary_column = column_names[1]
-    neg_summary_column = column_names[2]
 
     '''load negative output file'''
     # pos_neg_tuple_list = load_negative_output(args.negative_output_file)
@@ -377,21 +375,36 @@ def main():
     max_target_length = args.max_target_length
     padding = "max_length" if args.pad_to_max_length else False
 
-    def preprocess_function_train(examples):
+    def preprocess_function(examples):
         '''tokenize, padding'''
         inputs = examples[text_column]
-        targets = examples[summary_column]
-        neg_targets = examples[neg_summary_column]
+        pos_and_neg_targets = examples[summary_column]
+        neg_exist_flag = False
+        if pos_and_neg_targets[0].index(' &&& ') >=0:
+            neg_exist_flag=True
+
+        targets = []
+        neg_targets = []
+        if neg_exist_flag:
+            for targ in pos_and_neg_targets:
+                pos_str, neg_str = targ.split(' &&& ')
+                targets.append(pos_str)
+                neg_targets.append(neg_str)
+        else:
+            targets = pos_and_neg_targets
+
         '''avoid NoneType in target'''
         targets = [inp  if inp is not None else "none" for inp in targets]
-        neg_targets = [inp  if inp is not None else "none" for inp in neg_targets]
+        if neg_exist_flag:
+            neg_targets = [inp  if inp is not None else "none" for inp in neg_targets]
         model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
 
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
-        with tokenizer.as_target_tokenizer():
-            neg_labels = tokenizer(neg_targets, max_length=max_target_length, padding=padding, truncation=True)
+        if neg_exist_flag:
+            with tokenizer.as_target_tokenizer():
+                neg_labels = tokenizer(neg_targets, max_length=max_target_length, padding=padding, truncation=True)
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
@@ -399,43 +412,21 @@ def main():
             labels["input_ids"] = [
                 [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
             ]
-        if padding == "max_length" and args.ignore_pad_token_for_loss:
-            neg_labels["input_ids"] = [
-                [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in neg_labels["input_ids"]
-            ]
+        if neg_exist_flag:
+            if padding == "max_length" and args.ignore_pad_token_for_loss:
+                neg_labels["input_ids"] = [
+                    [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in neg_labels["input_ids"]
+                ]
         model_inputs["labels"] = labels["input_ids"]
-        model_inputs["neg_labels"] = neg_labels["input_ids"]
+        if neg_exist_flag:
+            model_inputs["neg_labels"] = neg_labels["input_ids"]
+        else:
+            model_inputs["neg_labels"] = labels["input_ids"]
         return model_inputs
-
-    def preprocess_function_validation(examples):
-        '''tokenize, padding'''
-        inputs = examples[text_column]
-        targets = examples[summary_column]
-        '''avoid NoneType in target'''
-        targets = [inp  if inp is not None else "none" for inp in targets]
-        model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
-
-        # Setup the tokenizer for targets
-        with tokenizer.as_target_tokenizer():
-            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
-
-        # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
-        # padding in the loss.
-        if padding == "max_length" and args.ignore_pad_token_for_loss:
-            labels["input_ids"] = [
-                [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
-            ]
-
-        model_inputs["labels"] = labels["input_ids"]
-        '''added'''
-        model_inputs["neg_labels"] = labels["input_ids"]
-        return model_inputs
-
-
 
     with accelerator.main_process_first():
         train_dataset = raw_datasets["train"].select(range(100)).map(
-            preprocess_function_train,
+            preprocess_function,
             batched=True,
             num_proc=args.preprocessing_num_workers,
             remove_columns=column_names,
@@ -443,13 +434,14 @@ def main():
             desc="Running tokenizer on train dataset",
         )
         eval_dataset = raw_datasets["validation"].map(
-            preprocess_function_validation,
+            preprocess_function,
             batched=True,
             num_proc=args.preprocessing_num_workers,
             remove_columns=column_names,
             load_from_cache_file=not args.overwrite_cache,
-            desc="Running tokenizer on eval dataset",
+            desc="Running tokenizer on train dataset",
         )
+
     # train_dataset = tokenized_dataset["train"]
     # eval_dataset = tokenized_dataset["validation"]#.select(range(200))
 
@@ -584,7 +576,7 @@ if __name__ == "__main__":
 
 '''
 
-CUDA_VISIBLE_DEVICES=0 python -u InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.three.cols.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3
+CUDA_VISIBLE_DEVICES=0 python -u InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3
 
 
 '''
