@@ -418,10 +418,10 @@ def main():
                     [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in neg_labels["input_ids"]
                 ]
         model_inputs["labels"] = labels["input_ids"]
-        if neg_exist_flag:
-            model_inputs["neg_labels"] = neg_labels["input_ids"]
-        else:
-            model_inputs["neg_labels"] = labels["input_ids"]
+        # if neg_exist_flag:
+        #     model_inputs["neg_labels"] = neg_labels["input_ids"]
+        # else:
+        #     model_inputs["neg_labels"] = labels["input_ids"]
         return model_inputs
 
     with accelerator.main_process_first():
@@ -481,6 +481,7 @@ def main():
         model.train()
         for step, batch in enumerate(train_dataloader):
             print('batch:', batch)
+            exit(0)
             outputs = model(**batch)
             loss = outputs.loss
             loss = loss / args.gradient_accumulation_steps
