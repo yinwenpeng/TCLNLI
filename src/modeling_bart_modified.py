@@ -1336,7 +1336,7 @@ class BartForConditionalGeneration(BartPretrainedModel):
                 append_len = labels.shape[1] - neg_labels.shape[1]
                 if append_len>0:
                     ones = torch.ones(labels.shape[0], append_len)
-                    neg_labels = torch.cat((neg_labels, (-100*ones).to(neg_labels.device)), 1)
+                    neg_labels = torch.cat((neg_labels, (-100*ones).to(neg_labels.device, torch.int64)), 1)
 
             print('neg_labels.shape:', neg_labels.shape)
             print('neg_labels:', neg_labels)
