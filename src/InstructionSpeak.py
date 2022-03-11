@@ -89,7 +89,7 @@ class DataCollatorForSeq2Seq:
             The type of Tensor to return. Allowable values are "np", "pt" and "tf".
     """
 
-    tokenizer: PreTrainedTokenizerBase
+    tokenizer: transformers.PreTrainedTokenizerBase
     model: Optional[Any] = None
     padding: Union[bool, str, PaddingStrategy] = True
     max_length: Optional[int] = None
