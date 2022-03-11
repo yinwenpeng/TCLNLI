@@ -227,6 +227,27 @@ def load_negative_output(fil):
     read_fil.close()
     return tuple_list
 
+def merge_standard_csv_with_negative_output_into_csv_of_three_cols(origin_file, neg_file, output_file):
+    read_fil = codecs.open(origin_file, 'r', 'utf-8')
+    read_file = csv.DictReader(read_fil)
+    tuple_list = []
+    for row in read_file:
+        dict_row = dict(row)
+        tuple_list.append((dict_row['input'].strip(), dict_row['output'].strip()))
+    read_fil.close()
+    neg_tuple_list = load_negative_output(neg_file)
+    assert len(tuple_list) == len(neg_tuple_list)
+
+    csvfile = codecs.open(output_file, 'w', 'utf-8')
+    fieldnames = ['input', 'output', 'neg_output']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    for i in range(len(tuple_list)):
+        if neg_tuple_list[i][0]!= neg_tuple_list[i][1]:
+            writer.writerow({'input': tuple_list[i][0].strip(), 'output': tuple_list[i][1].strip(), 'neg_output': neg_tuple_list[i][1].strip()})
+    csvfile.close()
+    print('merge over')
+
 
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
@@ -242,14 +263,16 @@ if __name__ == '__main__':
     # merge_test_tasks_into_one_category(test_csv_path, ['subtask034_winogrande_question_modification_object.csv', 'subtask045_miscellaneous_sentence_paraphrasing.csv'], 'MM.csv')
     # merge_test_tasks_into_one_category(test_csv_path, ['subtask039_qasc_find_overlapping_words.csv', 'subtask044_essential_terms_identifying_essential_words.csv'], 'VF.csv')
 
-    generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv')
-    test_csv_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
-    merge_test_tasks_into_one_category(test_csv_path, ['subtask002_quoref_answer_generation.csv', 'subtask033_winogrande_answer_generation.csv'], 'AG.csv')
-    merge_test_tasks_into_one_category(test_csv_path, ['subtask003_mctaco_question_generation_event_duration.csv', 'subtask040_qasc_question_generation.csv'], 'QG.csv')
-    merge_test_tasks_into_one_category(test_csv_path, ['subtask005_mctaco_wrong_answer_generation_event_duration.csv', 'subtask008_mctaco_wrong_answer_generation_transient_stationary.csv'], 'IAG.csv')
-    merge_test_tasks_into_one_category(test_csv_path, ['subtask022_cosmosqa_passage_inappropriate_binary.csv', 'subtask052_multirc_identify_bad_question.csv'], 'CF.csv')
-    merge_test_tasks_into_one_category(test_csv_path, ['subtask034_winogrande_question_modification_object.csv', 'subtask045_miscellaneous_sentence_paraphrasing.csv'], 'MM.csv')
-    merge_test_tasks_into_one_category(test_csv_path, ['subtask039_qasc_find_overlapping_words.csv', 'subtask044_essential_terms_identifying_essential_words.csv'], 'VF.csv')
+    # generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/test_original_paper', '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv')
+    # test_csv_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
+    # merge_test_tasks_into_one_category(test_csv_path, ['subtask002_quoref_answer_generation.csv', 'subtask033_winogrande_answer_generation.csv'], 'AG.csv')
+    # merge_test_tasks_into_one_category(test_csv_path, ['subtask003_mctaco_question_generation_event_duration.csv', 'subtask040_qasc_question_generation.csv'], 'QG.csv')
+    # merge_test_tasks_into_one_category(test_csv_path, ['subtask005_mctaco_wrong_answer_generation_event_duration.csv', 'subtask008_mctaco_wrong_answer_generation_transient_stationary.csv'], 'IAG.csv')
+    # merge_test_tasks_into_one_category(test_csv_path, ['subtask022_cosmosqa_passage_inappropriate_binary.csv', 'subtask052_multirc_identify_bad_question.csv'], 'CF.csv')
+    # merge_test_tasks_into_one_category(test_csv_path, ['subtask034_winogrande_question_modification_object.csv', 'subtask045_miscellaneous_sentence_paraphrasing.csv'], 'MM.csv')
+    # merge_test_tasks_into_one_category(test_csv_path, ['subtask039_qasc_find_overlapping_words.csv', 'subtask044_essential_terms_identifying_essential_words.csv'], 'VF.csv')
 
     # generate_negative_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv')
     # merge_multiple_csv_files('/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv')
+
+    merge_standard_csv_with_negative_output_into_csv_of_three_cols('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.batch40.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.three.cols.csv')

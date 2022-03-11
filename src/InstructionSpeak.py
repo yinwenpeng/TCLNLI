@@ -368,11 +368,8 @@ def main():
 
     '''load negative output file'''
     pos_neg_tuple_list = load_negative_output(args.negative_output_file)
-    print('len(pos_neg_tuple_list):', len(pos_neg_tuple_list))
-    print('raw_datasets["train"]:', raw_datasets["train"])
-    assert len(pos_neg_tuple_list) == len(raw_datasets["train"])
-    print('size matches')
-    exit(0)
+    assert len(pos_neg_tuple_list) == raw_datasets["train"].num_rows
+
 
     # Temporarily set max_target_length for training.
     max_target_length = args.max_target_length
