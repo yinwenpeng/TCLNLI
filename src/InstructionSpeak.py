@@ -455,9 +455,9 @@ def main():
             for targ in pos_and_neg_targets:
                 pos_str, neg_str = targ.split(' &&& ')
                 targets.append(pos_str)
-                neg_targets.append(neg_str)
-                # '''we also try concatenate neg and pos'''
-                # neg_targets.append(neg_str+' '+pos_str)
+                # neg_targets.append(neg_str)
+                '''we also try concatenate neg and pos'''
+                neg_targets.append(neg_str+' '+pos_str)
         else:
             targets = pos_and_neg_targets
 
@@ -646,12 +646,15 @@ if __name__ == "__main__":
 '''
 
 CUDA_VISIBLE_DEVICES="0,2" accelerate launch InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetuned_BART_on_pos_and_neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3 > log.finetune.on.pos.and.neg.txt 2>&1
-
+very bad
 
 CUDA_VISIBLE_DEVICES="0,1,2" accelerate launch InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetuned_BART_on_pos_and_neg_concated --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3 > log.finetune.on.pos.and.neg.concatenated.txt 2>&1
+rouge_L: 43.8023
+rouge_L: 43.7995
+rouge_L: 43.7957
 
 
-CUDA_VISIBLE_DEVICES="0,2" accelerate launch InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetuned_BART_on_pos_and_neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3 > log.finetune.on.pos.and.neg.weight.0.1.txt 2>&1
+CUDA_VISIBLE_DEVICES="0,1,2,4" accelerate launch InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetuned_BART_on_pos_and_neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 4 > log.finetune.on.pos.and.neg.weight.0.1.txt 2>&1
 
 
 '''
