@@ -445,7 +445,7 @@ def main():
     # train_dataset = tokenized_dataset["train"]
     # eval_dataset = tokenized_dataset["validation"]#.select(range(200))
 
-
+    print('train_dataset:', train_dataset)
 
     label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
     data_collator = DataCollatorForSeq2Seq(
