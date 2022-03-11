@@ -56,7 +56,7 @@ from transformers.utils.versions import require_version
 
 from typing import Optional, Any, Union
 
-class DataCollatorForSeq2Seq(tokenizer,
+class DataCollatorForSeq2Seq(tokenizer = None,
     model  = None,
     padding = True,
     max_length  = None,
