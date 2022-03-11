@@ -56,7 +56,14 @@ from transformers.utils.versions import require_version
 
 from typing import Optional, Any, Union
 
-class DataCollatorForSeq2Seq(tokenizer=None, model =None, padding=True,max_length=None,pad_to_multiple_of=None,label_pad_token_id=-100,return_tensors="pt"):
+class DataCollatorForSeq2Seq:
+    tokenizer: transformers.PreTrainedTokenizerBase
+    model: Optional[Any] = None
+    padding: Union[bool, str, PaddingStrategy] = True
+    max_length: Optional[int] = None
+    pad_to_multiple_of: Optional[int] = None
+    label_pad_token_id: int = -100
+    return_tensors: str = "pt"
 
     def __call__(self, features, return_tensors=None):
         import numpy as np
