@@ -418,13 +418,13 @@ def main():
                 neg_labels["input_ids"] = [
                     [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in neg_labels["input_ids"]
                 ]
+        # if neg_exist_flag:
+        #     print('neg_labels["input_ids"]:', neg_labels["input_ids"])
+        model_inputs["labels"] = labels["input_ids"]
         if neg_exist_flag:
-            print('neg_labels["input_ids"]:', neg_labels["input_ids"])
-        # model_inputs["labels"] = labels["input_ids"]
-        if neg_exist_flag:
-            model_inputs["labels"] = neg_labels["input_ids"]
+            model_inputs["neg_labels"] = neg_labels["input_ids"]
         else:
-            model_inputs["labels"] = labels["input_ids"]
+            model_inputs["neg_labels"] = labels["input_ids"]
 
         return model_inputs
 
@@ -449,7 +449,8 @@ def main():
     # train_dataset = tokenized_dataset["train"]
     # eval_dataset = tokenized_dataset["validation"]#.select(range(200))
 
-    print('train_dataset:', train_dataset)
+    print('train_dataset["neg_labels"]:', train_dataset['neg_labels'])
+    exit(0)
 
     label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
     data_collator = DataCollatorForSeq2Seq(
