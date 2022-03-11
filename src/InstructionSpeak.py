@@ -417,6 +417,7 @@ def main():
                 neg_labels["input_ids"] = [
                     [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in neg_labels["input_ids"]
                 ]
+        print('neg_labels["input_ids"]:', neg_labels["input_ids"])
         model_inputs["labels"] = labels["input_ids"]
         # if neg_exist_flag:
         #     model_inputs["neg_labels"] = neg_labels["input_ids"]
