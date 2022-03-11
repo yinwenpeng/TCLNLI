@@ -108,6 +108,9 @@ def parse_args():
         "--validation_file", type=str, default=None, help="A csv or a json file containing the validation data."
     )
     parser.add_argument(
+        "--negative_output_file", type=str, default=None, help="A csv or a json file containing the validation data."
+    )
+    parser.add_argument(
         "--ignore_pad_token_for_loss",
         type=bool,
         default=True,
