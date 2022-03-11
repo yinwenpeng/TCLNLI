@@ -217,6 +217,16 @@ def merge_multiple_csv_files(input_folder, output_file):
     csvfile.close()
     print('merge over')
 
+def load_negative_output(fil):
+    read_fil = codecs.open(fil, 'r', 'utf-8')
+    read_file = csv.DictReader(read_fil)
+    tuple_list = []
+    for row in read_file:
+        dict_row = dict(row)
+        tuple_list.append((dict_row['positive'].strip(), dict_row['negative'].strip()))
+    read_fil.close()
+    return tuple_list
+
 
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
