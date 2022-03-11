@@ -402,6 +402,7 @@ def main():
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+        neg_labels=None
         if neg_exist_flag:
             with tokenizer.as_target_tokenizer():
                 neg_labels = tokenizer(neg_targets, max_length=max_target_length, padding=padding, truncation=True)
