@@ -1321,7 +1321,7 @@ class BartForConditionalGeneration(BartPretrainedModel):
             loss_fct = CrossEntropyLoss()
             masked_lm_loss = loss_fct(lm_logits.view(-1, self.config.vocab_size), labels.view(-1))
             print('labels.shape:', labels.size())
-            print('neg_labels.shape:', neg_labels.size())
+            print('neg_labels.shape:', neg_labels.size(), neg_labels.dtype)
             '''1.0-logits'''
             neg_labels=neg_labels[:,labels.size[1]]
             print('new neg_labels.shape:', neg_labels.size())
