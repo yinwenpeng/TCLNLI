@@ -555,7 +555,8 @@ def main():
     # for epoch in range(args.num_train_epochs):
     for epoch in trange(args.num_train_epochs, desc="train_epochs"):
         model.train()
-        for step, batch in enumerate(train_dataloader):
+        # for step, batch in enumerate(train_dataloader):
+        for step, batch in enumerate(tqdm(train_dataloader, desc="Training")):
             outputs = model(**batch)
             loss = outputs.loss
             loss = loss / args.gradient_accumulation_steps
@@ -570,57 +571,63 @@ def main():
 
             if completed_steps >= args.max_train_steps:
                 break
-        store_model(accelerator, model, args.output_dir, tokenizer)
-    '''evaluting'''
-    model.eval()
-    if args.val_max_target_length is None:
-        args.val_max_target_length = args.max_target_length
 
-    gen_kwargs = {
-        "max_length": args.val_max_target_length if args is not None else config.max_length,
-        "num_beams": args.num_beams,
-    }
-    # for step, batch in enumerate(eval_dataloader):
-    for step, batch in enumerate(tqdm(eval_dataloader, desc="Evaluating")):
-        with torch.no_grad():
-            generated_tokens = accelerator.unwrap_model(model).generate(
-                batch["input_ids"],
-                attention_mask=batch["attention_mask"],
-                **gen_kwargs,
-            )
+        model_flag = '_lr_'+str(args.learning_rate)+'epoch_'+str(epoch)
+        store_model(accelerator, model, args.output_dir+model_flag, tokenizer)
+        '''evaluting after each epoch'''
+        model.eval()
+        if args.val_max_target_length is None:
+            args.val_max_target_length = args.max_target_length
 
-            generated_tokens = accelerator.pad_across_processes(
-                generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
-            )
-            labels = batch["labels"]
-            if not args.pad_to_max_length:
-                # If we did not pad to max length, we need to pad the labels too
-                labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
+        gen_kwargs = {
+            "max_length": args.val_max_target_length if args is not None else config.max_length,
+            "num_beams": args.num_beams,
+        }
+        # for step, batch in enumerate(eval_dataloader):
+        for step, batch in enumerate(tqdm(eval_dataloader, desc="Evaluating")):
+            with torch.no_grad():
+                generated_tokens = accelerator.unwrap_model(model).generate(
+                    batch["input_ids"],
+                    attention_mask=batch["attention_mask"],
+                    **gen_kwargs,
+                )
 
-            generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
-            labels = accelerator.gather(labels).cpu().numpy()
+                generated_tokens = accelerator.pad_across_processes(
+                    generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
+                )
+                labels = batch["labels"]
+                if not args.pad_to_max_length:
+                    # If we did not pad to max length, we need to pad the labels too
+                    labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
 
-            if args.ignore_pad_token_for_loss:
-                # Replace -100 in the labels as we can't decode them.
-                labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-            if isinstance(generated_tokens, tuple):
-                generated_tokens = generated_tokens[0]
-            decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+                generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
+                labels = accelerator.gather(labels).cpu().numpy()
 
-            decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+                if args.ignore_pad_token_for_loss:
+                    # Replace -100 in the labels as we can't decode them.
+                    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+                if isinstance(generated_tokens, tuple):
+                    generated_tokens = generated_tokens[0]
+                decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+                decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
-            metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-    result = metric.compute(use_stemmer=True)
-    # Extract a few results from ROUGE
-    result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
+                decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-    result = {k: round(v, 4) for k, v in result.items()}
+                metric.add_batch(predictions=decoded_preds, references=decoded_labels)
+        result = metric.compute(use_stemmer=True)
+        # Extract a few results from ROUGE
+        result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
 
-    logger.info(result)
+        result = {k: round(v, 4) for k, v in result.items()}
+
+        # logger.info(result)
+        rouge_L = result["rougeL"]
+
+        print('rouge_L:', rouge_L)
 
 
 def store_model(accele, model, output_dir, tokenizer):
+    os.makedirs(output_dir, exist_ok=True)
     accele.wait_for_everyone()
     unwrapped_model = accele.unwrap_model(model)
     unwrapped_model.save_pretrained(output_dir, save_function=accele.save)
@@ -664,7 +671,12 @@ w/ pos info: {'rouge1': 80.4533, 'rouge2': 59.5142, 'rougeL': 80.1098, 'rougeLsu
 
 training on (input, neg_output):
 CUDA_VISIBLE_DEVICES="0,1,2,4" accelerate launch baseline_BART.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.only.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/pretrain.on.input.to.neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 4 > log.pretrain.on.input.to.neg.txt 2>&1
+{'rouge1': 60.1727, 'rouge2': 37.3546, 'rougeL': 55.7804, 'rougeLsum': 55.8278}
 
+finetune on regular training of 49 tasks
+CUDA_VISIBLE_DEVICES="0,1" accelerate launch baseline_BART.py --model_name_or_path /home/tup51337/tmp/pretrain.on.input.to.neg --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetune.after.pretrain.input.to.neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 4 > log.finetune.after.pretrain.on.input.to.neg.lr5e5.txt 2>&1
+
+CUDA_VISIBLE_DEVICES="2,3" accelerate launch baseline_BART.py --model_name_or_path /home/tup51337/tmp/pretrain.on.input.to.neg --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetune.after.pretrain.input.to.neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 2e-5 --preprocessing_num_workers 4 > log.finetune.after.pretrain.on.input.to.neg.lr2e5.txt 2>&1
 
 
 '''
