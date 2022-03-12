@@ -18,7 +18,7 @@ import math
 import random
 import warnings
 from typing import Optional, Tuple
-
+from torch.nn import functional as F
 import torch
 import torch.utils.checkpoint
 from torch import nn
@@ -1217,6 +1217,13 @@ class BartModel(BartPretrainedModel):
         )
 
 
+def CrossEntropyLoss_reverse_logits(origin_logits, labels):
+    prob_matrix = F.softmax(origin_logits, dim=1)
+    new_prob_matrix = 1.0-prob_matrix*1.0
+    log_new_prob_matrix = torch.log(new_prob_matrix)
+    loss = F.nll_loss(log_new_prob_matrix, labels.view(-1))
+    return loss
+
 @add_start_docstrings(
     "The BART Model with a language modeling head. Can be used for summarization.", BART_START_DOCSTRING
 )
@@ -1315,8 +1322,6 @@ class BartForConditionalGeneration(BartPretrainedModel):
             return_dict=return_dict,
         )
         lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias
-        print('lm_logits:', lm_logits)
-        exit(0)
 
         masked_lm_loss = None
         if labels is not None:
@@ -1326,7 +1331,7 @@ class BartForConditionalGeneration(BartPretrainedModel):
 
             '''1.0-logits'''
 
-            reverse_logits = 1.0-lm_logits.view(-1, self.config.vocab_size)
+            # reverse_logits = 1.0-lm_logits.view(-1, self.config.vocab_size)
             if labels.shape[1] < neg_labels.shape[1]:
                 neg_labels=neg_labels[:,:labels.shape[1]]
             else:
@@ -1336,8 +1341,9 @@ class BartForConditionalGeneration(BartPretrainedModel):
                     neg_labels = torch.cat((neg_labels, (-100*ones).to(neg_labels.device, torch.int64)), 1)
 
             #view(-1) doesnt work, so use reshape
-            neg_masked_lm_loss = loss_fct(reverse_logits, torch.reshape(neg_labels, (-1,)))
-            alpha=0.1
+            # neg_masked_lm_loss = loss_fct(reverse_logits, torch.reshape(neg_labels, (-1,)))
+            neg_masked_lm_loss = CrossEntropyLoss_reverse_logits(lm_logits.view(-1, self.config.vocab_size), neg_labels)
+            alpha=0.5
             masked_lm_loss=(1.0-alpha)*masked_lm_loss + alpha*neg_masked_lm_loss
 
         if not return_dict:
