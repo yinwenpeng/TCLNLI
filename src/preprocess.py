@@ -248,6 +248,27 @@ def merge_standard_csv_with_negative_output_into_csv(origin_file, neg_file, outp
     csvfile.close()
     print('merge over')
 
+def merge_input_with_negative_output_as_csv(origin_file, neg_file, output_file):
+    read_fil = codecs.open(origin_file, 'r', 'utf-8')
+    read_file = csv.DictReader(read_fil)
+    tuple_list = []
+    for row in read_file:
+        dict_row = dict(row)
+        tuple_list.append((dict_row['input'].strip(), dict_row['output'].strip()))
+    read_fil.close()
+    neg_tuple_list = load_negative_output(neg_file)
+    assert len(tuple_list) == len(neg_tuple_list)
+
+    csvfile = codecs.open(output_file, 'w', 'utf-8')
+    fieldnames = ['input', 'output']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    for i in range(len(tuple_list)):
+        if neg_tuple_list[i][0]!= neg_tuple_list[i][1]:
+            writer.writerow({'input': tuple_list[i][0].strip(), 'output': neg_tuple_list[i][1].strip()})
+    csvfile.close()
+    print('merge over')
+
 
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
@@ -275,4 +296,6 @@ if __name__ == '__main__':
     # generate_negative_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv')
     # merge_multiple_csv_files('/home/tup51337/dataset/Natural-Instructions/train_tasks_instruction_into_negative_examples_csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv')
 
-    merge_standard_csv_with_negative_output_into_csv('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.batch40.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv')
+    # merge_standard_csv_with_negative_output_into_csv('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.batch40.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv')
+
+    merge_input_with_negative_output_as_csv('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.origin.model.on.49.3.12.2022.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.only.neg.csv')
