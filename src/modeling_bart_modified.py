@@ -1221,7 +1221,7 @@ def CrossEntropyLoss_reverse_logits(origin_logits, labels):
     prob_matrix = F.softmax(origin_logits, dim=1)
     new_prob_matrix = 1.0-prob_matrix*1.0
     log_new_prob_matrix = torch.log(new_prob_matrix)
-    loss = F.nll_loss(log_new_prob_matrix, labels.view(-1))
+    loss = F.nll_loss(log_new_prob_matrix, labels)
     return loss
 
 @add_start_docstrings(
@@ -1342,7 +1342,7 @@ class BartForConditionalGeneration(BartPretrainedModel):
 
             #view(-1) doesnt work, so use reshape
             # neg_masked_lm_loss = loss_fct(reverse_logits, torch.reshape(neg_labels, (-1,)))
-            neg_masked_lm_loss = CrossEntropyLoss_reverse_logits(lm_logits.view(-1, self.config.vocab_size), neg_labels)
+            neg_masked_lm_loss = CrossEntropyLoss_reverse_logits(lm_logits.view(-1, self.config.vocab_size), torch.reshape(neg_labels, (-1,)))
             alpha=0.5
             masked_lm_loss=(1.0-alpha)*masked_lm_loss + alpha*neg_masked_lm_loss
 
