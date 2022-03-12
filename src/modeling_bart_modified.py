@@ -1220,7 +1220,10 @@ class BartModel(BartPretrainedModel):
 def CrossEntropyLoss_reverse_logits(origin_logits, labels):
     prob_matrix = F.softmax(origin_logits, dim=1)
     new_prob_matrix = 1.0-prob_matrix*1.0
+
+    print('new_prob_matrix:', new_prob_matrix)
     log_new_prob_matrix = torch.log(new_prob_matrix)
+    print('log_new_prob_matrix:', log_new_prob_matrix)
     loss = F.nll_loss(log_new_prob_matrix, labels)
     return loss
 
