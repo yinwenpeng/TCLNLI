@@ -1334,7 +1334,7 @@ class BartForConditionalGeneration(BartPretrainedModel):
 
             '''1.0-logits'''
 
-            # reverse_logits = 1.0-lm_logits.view(-1, self.config.vocab_size)
+            reverse_logits = 1.0-F.softmax(lm_logits.view(-1, self.config.vocab_size), dim=1)
             if labels.shape[1] < neg_labels.shape[1]:
                 neg_labels=neg_labels[:,:labels.shape[1]]
             else:
@@ -1344,8 +1344,8 @@ class BartForConditionalGeneration(BartPretrainedModel):
                     neg_labels = torch.cat((neg_labels, (-100*ones).to(neg_labels.device, torch.int64)), 1)
 
             #view(-1) doesnt work, so use reshape
-            # neg_masked_lm_loss = loss_fct(reverse_logits, torch.reshape(neg_labels, (-1,)))
-            neg_masked_lm_loss = CrossEntropyLoss_reverse_logits(lm_logits.view(-1, self.config.vocab_size), torch.reshape(neg_labels, (-1,)))
+            neg_masked_lm_loss = loss_fct(reverse_logits, torch.reshape(neg_labels, (-1,)))
+            # neg_masked_lm_loss = CrossEntropyLoss_reverse_logits(lm_logits.view(-1, self.config.vocab_size), torch.reshape(neg_labels, (-1,)))
             alpha=0.5
             print('masked_lm_loss:', masked_lm_loss)
             print('neg_masked_lm_loss:', neg_masked_lm_loss)
