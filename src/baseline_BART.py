@@ -646,7 +646,7 @@ training:
 CUDA_VISIBLE_DEVICES="0,1,2,3" accelerate launch baseline_BART.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/tmp --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 3 > log.v2.txt 2>&1
 
 evaluation only:
-CUDA_VISIBLE_DEVICES=1 accelerate launch baseline_BART.py --model_name_or_path /home/tup51337/tmp/tmp --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/MM.csv --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 0 --learning_rate 5e-5 --preprocessing_num_workers 3
+CUDA_VISIBLE_DEVICES=0 accelerate launch baseline_BART.py --model_name_or_path /home/tup51337/tmp/tmp --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/MM.csv --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 0 --learning_rate 5e-5 --preprocessing_num_workers 3
 
 
 
@@ -661,6 +661,9 @@ w/ pos infor: {'rouge1': 86.5464, 'rouge2': 62.9581, 'rougeL': 85.9967, 'rougeLs
 CUDA_VISIBLE_DEVICES=1 python -u baseline_BART.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_negative_examples.csv --output_dir /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --per_device_train_batch_size=3 --per_device_eval_batch_size=16 --num_train_epochs 10 --learning_rate 5e-5
 w/ pos info: {'rouge1': 80.4533, 'rouge2': 59.5142, 'rougeL': 80.1098, 'rougeLsum': 80.2207}
 
+
+training on (input, neg_output):
+CUDA_VISIBLE_DEVICES="0,1,2,4" accelerate launch baseline_BART.py --model_name_or_path facebook/bart-base --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.only.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/pretrain.on.input.to.neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 4 > log.pretrain.on.input.to.neg.txt 2>&1
 
 
 
