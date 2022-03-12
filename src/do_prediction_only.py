@@ -569,5 +569,29 @@ MM: 88.1377 (244.71)
 VF: 6.2274 (250.93)
 mean: 41.82
 
+CUDA_VISIBLE_DEVICES=0 python -u do_prediction_only.py --model_name_or_path /home/tup51337/tmp/joint.train.on.gold.and.neg_lr_5e-05epoch_2 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/CF.csv --per_device_eval_batch_size=40 --preprocessing_num_workers 3
+@epoch 0
+QG: 51.6802
+AG: 26.37
+CF: 61.20
+IAG: 12.71
+MM: 52.27
+VF: 6.9805
+
+@epoch 1
+QG: 53.99
+AG: 25.39
+CF: 62.31
+IAG: 12.01
+MM: 70.65
+VF: 6.73
+
+@epoch 2
+QG: 52.4384
+AG: 9.8408
+CF: 61.2069
+IAG: 11.7413
+MM:
+VF:
 
 '''
