@@ -1344,6 +1344,8 @@ class BartForConditionalGeneration(BartPretrainedModel):
             # neg_masked_lm_loss = loss_fct(reverse_logits, torch.reshape(neg_labels, (-1,)))
             neg_masked_lm_loss = CrossEntropyLoss_reverse_logits(lm_logits.view(-1, self.config.vocab_size), torch.reshape(neg_labels, (-1,)))
             alpha=0.5
+            print('masked_lm_loss:', masked_lm_loss)
+            print('neg_masked_lm_loss:', neg_masked_lm_loss)
             masked_lm_loss=(1.0-alpha)*masked_lm_loss + alpha*neg_masked_lm_loss
 
         if not return_dict:

@@ -512,6 +512,7 @@ if __name__ == "__main__":
 "sequential finetune on instructions"
 CUDA_VISIBLE_DEVICES=0 python -u generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks_all_negative_examples --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --output_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.csv --per_device_train_batch_size=2 --per_device_eval_batch_size=40 > log.generate_negative_for_49.3.10.22.bigger.batch.size.txt 2>&1
 
-
+#use the pretrained model on 49 tasks to denoise itself
+CUDA_VISIBLE_DEVICES=4 python -u generate_negative_output.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv --output_dir /home/tup51337/tmp/tmp4 --output_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.origin.model.on.49.3.12.2022.csv --per_device_train_batch_size=2 --per_device_eval_batch_size=40 > log.generate_negative_for_49.3.12.22.bigger.batch.size.txt 2>&1
 
 '''
