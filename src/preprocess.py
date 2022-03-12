@@ -269,6 +269,25 @@ def merge_input_with_negative_output_as_csv(origin_file, neg_file, output_file):
     csvfile.close()
     print('merge over')
 
+def concatenate_csv_files(file_list, output_file):
+    tuple_list = []
+    for origin_file in file_list:
+        read_fil = codecs.open(origin_file, 'r', 'utf-8')
+        read_file = csv.DictReader(read_fil)
+        for row in read_file:
+            dict_row = dict(row)
+            tuple_list.append((dict_row['input'].strip(), dict_row['output'].strip()))
+        read_fil.close()
+
+    csvfile = codecs.open(output_file, 'w', 'utf-8')
+    fieldnames = ['input', 'output']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    for i in range(len(tuple_list)):
+        writer.writerow({'input': tuple_list[i][0].strip(), 'output': tuple_list[i][1].strip()})
+    csvfile.close()
+    print('concatenate over')
+
 
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
@@ -298,4 +317,6 @@ if __name__ == '__main__':
 
     # merge_standard_csv_with_negative_output_into_csv('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.3.10.2022.batch40.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv')
 
-    merge_input_with_negative_output_as_csv('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.origin.model.on.49.3.12.2022.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.only.neg.csv')
+    # merge_input_with_negative_output_as_csv('/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv_only_pos_and_neg_answers.origin.model.on.49.3.12.2022.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.only.neg.csv')
+
+    concatenate_csv_files(['/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.only.neg.csv'], '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.joint.gold.and.neg.csv')

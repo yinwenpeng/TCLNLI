@@ -516,9 +516,58 @@ if __name__ == "__main__":
 
 '''
 evaluation only:
-CUDA_VISIBLE_DEVICES=0 python -u do_prediction_only.py --model_name_or_path /home/tup51337/tmp/finetuned_BART_on_pos_and_neg_concate_0.1_2e5 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/AG.csv --per_device_eval_batch_size=40 --preprocessing_num_workers 3
-19.9176
+CUDA_VISIBLE_DEVICES=4 python -u do_prediction_only.py --model_name_or_path /home/tup51337/tmp/pretrain.on.input.to.neg --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/AG.csv --per_device_eval_batch_size=40 --preprocessing_num_workers 3
+QG: 55.7804
+AG: 24.7472 (80.52)
+CF: 61.2069 (141.72)
+IAG: 12.6029 (154.32)
+MM: 83.7747 (238.09)
+VF: 8.231 (246.32)
+mean: 41.05
 
+CUDA_VISIBLE_DEVICES=4 python -u do_prediction_only.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_5e-05epoch_1 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/AG.csv --per_device_eval_batch_size=40 --preprocessing_num_workers 3
+@epoch 0
+QG: 43.6269
+AG: 19.115
+CF:62.3153
+IAG: 12.1031
+MM: 50.3708
+VF: 7.3477
+
+@epoch 1.......................
+QG: 52.1177
+AG: 25.5928 (77.70)
+CF: 75.8621 (153.56)
+IAG: 11.1551 (164.71)
+MM: 74.9542 (239.66)
+VF: 8.1399 (247.80)
+mean: 41.3
+
+@epoch 2
+
+CF: 62.8079
+IAG: 11.9179
+MM: 64.3461
+VF: 8.2038
+
+CUDA_VISIBLE_DEVICES=4 python -u do_prediction_only.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/AG.csv --per_device_eval_batch_size=40 --preprocessing_num_workers 3
+@epoch 0
+QG: 51.2778
+AG: 22.4672 (73.73)
+CF: 62.8079 (136.53)
+IAG: 12.884 (149.41)
+MM: 89.3314 (238.74)
+VF: 5.8862  (244.62)
+
+
+@epoch 1........................
+QG: 51.07
+AG: 23.404 (74.47)
+CF: 70.6897 (145.15)
+IAG: 11.4365 (156.58)
+MM: 88.1377 (244.71)
+VF: 6.2274 (250.93)
+mean: 41.82
 
 
 '''
