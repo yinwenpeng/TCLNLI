@@ -659,6 +659,10 @@ rouge_L: 45.8556
 
 #concatenate, with weight 0.1, lr 2e-5
 CUDA_VISIBLE_DEVICES="0,1,2,4" accelerate launch InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetuned_BART_on_pos_and_neg_concate_0.1_2e5 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 2e-5 --preprocessing_num_workers 4 > log.finetune.on.pos.and.neg.weight.0.1.lr.2e5.txt 2>&1
-rouge_L: 49.7115  
+rouge_L: 49.7115
 
+#after modified the loss of neg logitis
+CUDA_VISIBLE_DEVICES="0,2" accelerate launch InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetuned_BART_on_pos_and_neg --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 5e-5 --preprocessing_num_workers 2 > log.finetune.on.pos.and.neg.weight.0.5.lr.5e5.txt 2>&1
+
+CUDA_VISIBLE_DEVICES="0,2" accelerate launch InstructionSpeak.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --train_file /home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.neg.csv --max_source_length 1024 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/QG.csv --output_dir /home/tup51337/tmp/finetuned_BART_on_pos_and_neg_concate_0.5_2e5 --per_device_train_batch_size=5 --per_device_eval_batch_size=16 --num_train_epochs 3 --learning_rate 2e-5 --preprocessing_num_workers 4 > log.finetune.on.pos.and.neg.weight.0.5.lr.2e5.txt 2>&1
 '''
