@@ -516,7 +516,7 @@ if __name__ == "__main__":
 
 '''
 evaluation only:
-CUDA_VISIBLE_DEVICES=0 python -u do_prediction_only.py --model_name_or_path /home/tup51337/tmp/finetuned_BART_on_pos_and_neg_concate_0.1_2e5 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/AG.csv --per_device_eval_batch_size=16 --preprocessing_num_workers 3
+CUDA_VISIBLE_DEVICES=0 python -u do_prediction_only.py --model_name_or_path /home/tup51337/tmp/finetuned_BART_on_pos_and_neg_concate_0.1_2e5 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/AG.csv --per_device_eval_batch_size=40 --preprocessing_num_workers 3
 
 
 
