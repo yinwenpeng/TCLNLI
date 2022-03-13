@@ -500,10 +500,10 @@ def main():
             # store_model(accelerator, model, args.output_dir, tokenizer)
 
             '''evaluting'''
-            csvfile = codecs.open(args.output_dir+'gold_and_pred.csv', 'w', 'utf-8')
-            fieldnames = ['gold', 'output']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
+            # csvfile = codecs.open(args.output_dir+'gold_and_pred.csv', 'w', 'utf-8')
+            # fieldnames = ['gold', 'output']
+            # writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            # writer.writeheader()
             predictions = []
             references = []
             model.eval()
@@ -545,10 +545,10 @@ def main():
                     decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
                     predictions+=decoded_preds
                     references+=decoded_labels
-                    for i in range(len(decoded_preds)):
-                        writer.writerow({'gold': decoded_preds[i].strip(), 'output': decoded_labels[i].strip()})
+                    # for i in range(len(decoded_preds)):
+                    #     writer.writerow({'gold': decoded_preds[i].strip(), 'output': decoded_labels[i].strip()})
                     # metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-            csvfile.close()
+            # csvfile.close()
             result = metric.compute(predictions=predictions, references=references, use_stemmer=True)
             # result = metric.compute(use_stemmer=True)
             # Extract a few results from ROUGE
@@ -602,7 +602,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=1 python -u InstructionSpeak_forward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 --learning_rate_decay 0.1> log.instructspeak.forward.txt 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u InstructionSpeak_forward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 --learning_rate_decay 0.5> log.instructspeak.forward.decay.0.5.txt 2>&1
 
 
 
