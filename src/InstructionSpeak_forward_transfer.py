@@ -498,6 +498,12 @@ def main():
             # store_model(accelerator, model, args.output_dir, tokenizer)
 
             '''evaluting'''
+            csvfile = codecs.open(args.output_dir+'gold_and_pred.csv', 'w', 'utf-8')
+            fieldnames = ['gold', 'output']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            predictions = []
+            references = []
             model.eval()
             if args.val_max_target_length is None:
                 args.val_max_target_length = args.max_target_length
@@ -535,11 +541,14 @@ def main():
                     decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
                     decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
-
-                    print('decoded_preds:', [i.encode('utf-8') for i in decoded_preds])
-                    print('decoded_labels:', [i.encode('utf-8') for i in decoded_labels])
-                    metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-            result = metric.compute(use_stemmer=True)
+                    predictions+=decoded_preds
+                    references+=decoded_labels
+                    for i in range(len(decoded_preds)):
+                        writer.writerow({'gold': decoded_preds[i].strip(), 'output': decoded_labels[i].strip()})
+                    # metric.add_batch(predictions=decoded_preds, references=decoded_labels)
+            csvfile.close()
+            result = metric.compute(predictions=predictions, references=references, use_stemmer=True)
+            # result = metric.compute(use_stemmer=True)
             # Extract a few results from ROUGE
             result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
 
