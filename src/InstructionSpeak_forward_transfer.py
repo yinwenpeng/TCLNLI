@@ -382,7 +382,8 @@ def main():
             if evolve_step>=2:
                 data_files["history_tasks"] = [unseen_tasks_path+task_i+'.csv' for task_i in task_sequence_for_evolve[: evolve_step-1]]
             data_files["train"] = unseen_tasks_path+train_task_filename+'.csv'
-            data_files["train_neg"] = unseen_tasks_path+train_task_filename+'.neg.csv'
+            if train_task_filename !='IAG':
+                data_files["train_neg"] = unseen_tasks_path+train_task_filename+'.neg.csv'
             data_files["validation"] = test_file
             raw_datasets = load_dataset("csv", data_files=data_files)
             column_names = raw_datasets["train"].column_names
@@ -427,7 +428,8 @@ def main():
             if evolve_step>=2:
                 history_dataset = tokenized_dataset["history_tasks"]
             train_dataset = tokenized_dataset["train"]
-            train_neg_dataset = tokenized_dataset["train_neg"]
+            if train_task_filename !='IAG':
+                train_neg_dataset = tokenized_dataset["train_neg"]
             eval_dataset = tokenized_dataset["validation"]#.select(range(200))
 
             label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
@@ -447,10 +449,12 @@ def main():
                     num_training_steps=args.num_train_epochs*len(history_dataloader),
                 )
             train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
-            train_neg_dataloader = DataLoader(train_neg_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
+            if train_task_filename !='IAG':
+                train_neg_dataloader = DataLoader(train_neg_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
+                train_neg_dataloader = accelerator.prepare(train_neg_dataloader)
             eval_dataloader = DataLoader(eval_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
 
-            train_dataloader, train_neg_dataloader, eval_dataloader = accelerator.prepare(train_dataloader, train_neg_dataloader, eval_dataloader)
+            train_dataloader, eval_dataloader = accelerator.prepare(train_dataloader, eval_dataloader)
 
             lr_scheduler = get_scheduler(
                 name=args.lr_scheduler_type,
@@ -483,7 +487,7 @@ def main():
                             lr_scheduler_history.step()
                             optimizer.zero_grad()
 
-            if len(train_neg_dataset)>0:
+            if train_task_filename !='IAG':
                 logger.info("***** Running neg training *****")
                 logger.info(f"  Num examples = {len(train_neg_dataset)}")
                 logger.info(f"  Num Epochs = {args.num_train_epochs}")
