@@ -218,6 +218,12 @@ def parse_args():
         default=5e-5,
         help="Initial learning rate (after the potential warmup period) to use.",
     )
+    parser.add_argument(
+        "--learning_rate_decay",
+        type=float,
+        default=0.1,
+        help="Initial learning rate (after the potential warmup period) to use.",
+    )
     parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay to use.")
     parser.add_argument("--num_train_epochs", type=int, default=3, help="Total number of training epochs to perform.")
     parser.add_argument(
@@ -352,7 +358,7 @@ def main():
                     "weight_decay": 0.0,
                 },
             ]
-            history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*0.1)
+            history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
             optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
             metric = load_metric("rouge")
             total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
@@ -582,7 +588,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_forward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 > log.instructspeak.forward.txt 2>&1
+CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_forward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 --learning_rate_decay 0.1> log.instructspeak.forward.txt 2>&1
 
 
 
