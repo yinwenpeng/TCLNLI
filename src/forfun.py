@@ -1,6 +1,6 @@
 
 import statistics
-values=[ 44.6053,51.2612,41.7361,45.2139,47.1491,42.8476,44.2852]
+values=[ 90.079,90.4183,90.9492,90.4883,90.1291]
 
 def computer_mean_std(value_list):
     average = round(sum(value_list)/len(value_list), 2)
