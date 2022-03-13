@@ -536,8 +536,8 @@ def main():
 
                     decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-                    print('decoded_preds:', decoded_preds)
-                    print('decoded_labels:', decoded_labels)
+                    print('decoded_preds:', decoded_preds.encode('utf-8'))
+                    print('decoded_labels:', decoded_labels.encode('utf-8'))
                     metric.add_batch(predictions=decoded_preds, references=decoded_labels)
             result = metric.compute(use_stemmer=True)
             # Extract a few results from ROUGE
