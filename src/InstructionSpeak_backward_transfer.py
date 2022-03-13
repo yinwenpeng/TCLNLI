@@ -594,7 +594,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=1 python -u InstructionSpeak_backward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 --learning_rate_decay 0.1> log.instructspeak.backward.decau.0.1.txt 2>&1
+CUDA_VISIBLE_DEVICES=1 python -u InstructionSpeak_backward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 --learning_rate_decay 0.5> log.instructspeak.backward.decau.0.5.txt 2>&1
 
 
 
