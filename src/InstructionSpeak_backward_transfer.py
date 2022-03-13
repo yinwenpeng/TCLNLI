@@ -28,7 +28,9 @@ from tqdm import tqdm, trange
 import datasets
 import nltk
 import numpy as np
+import csv
 import torch
+import codecs
 from datasets import load_dataset, load_metric
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
@@ -196,6 +198,12 @@ def parse_args():
         help="The name of the column in the datasets containing the summaries (for summarization).",
     )
     parser.add_argument(
+        "--target_task",
+        type=str,
+        default=None,
+        help="The name of the column in the datasets containing the summaries (for summarization).",
+    )
+    parser.add_argument(
         "--use_slow_tokenizer",
         action="store_true",
         help="If passed, will use a slow tokenizer (not backed by the 🤗 Tokenizers library).",
@@ -327,154 +335,158 @@ def main():
     # Preprocessing the datasets.
     # First we tokenize all the texts.
     unseen_tasks_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
-    unseen_task_sequence = ['QG.csv', 'AG.csv', 'CF.csv', 'IAG.csv', 'MM.csv', 'VF.csv']
-    unseen_task_2_performance = {}
-    for unseen_task in unseen_task_sequence:
-        head_task = unseen_task
-        test_file = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'+head_task
-        subsequent_task_list = [task_i for task_i in unseen_task_sequence if task_i != head_task]
-        head_task_performance_list = []
-        repeat_times = 10
-        for repeat_i in range(repeat_times):
-            '''first prepare a fresh model and tokenizer'''
-            config = AutoConfig.from_pretrained(args.model_name_or_path)
-            tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
-            model = AutoModelForSeq2SeqLM.from_pretrained(
-                    args.model_name_or_path,
-                    from_tf=bool(".ckpt" in args.model_name_or_path),
-                    config=config)
+    unseen_task_sequence = ['QG', 'AG', 'CF', 'IAG', 'MM', 'VF']
+    # unseen_task_2_performance = {}
+    # for unseen_task in unseen_task_sequence:
+    head_task = args.target_task#unseen_task
+    test_file = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'+head_task+'.csv'
+    subsequent_task_list = [task_i for task_i in unseen_task_sequence if task_i != head_task]
+    head_task_performance_list = []
+    repeat_times = 10
+    for repeat_i in range(repeat_times):
+        '''first prepare a fresh model and tokenizer'''
+        config = AutoConfig.from_pretrained(args.model_name_or_path)
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+                args.model_name_or_path,
+                from_tf=bool(".ckpt" in args.model_name_or_path),
+                config=config)
 
-            model.resize_token_embeddings(len(tokenizer))
-            if model.config.decoder_start_token_id is None:
-                raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
-            no_decay = ["bias", "LayerNorm.weight"]
-            optimizer_grouped_parameters = [
-                {
-                    "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-                    "weight_decay": args.weight_decay,
-                },
-                {
-                    "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-                    "weight_decay": 0.0,
-                },
-            ]
-            history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
-            optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
-            metric = load_metric("rouge")
-            total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-            model, optimizer, history_optimizer = accelerator.prepare(model, optimizer, history_optimizer)
+        model.resize_token_embeddings(len(tokenizer))
+        if model.config.decoder_start_token_id is None:
+            raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
+        no_decay = ["bias", "LayerNorm.weight"]
+        optimizer_grouped_parameters = [
+            {
+                "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+                "weight_decay": args.weight_decay,
+            },
+            {
+                "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+                "weight_decay": 0.0,
+            },
+        ]
+        history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
+        optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+        metric = load_metric("rouge")
+        total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
+        model, optimizer, history_optimizer = accelerator.prepare(model, optimizer, history_optimizer)
 
-            '''then, start to prepare data'''
-            random.shuffle(subsequent_task_list)
-            task_sequence_for_evolve = [head_task]+subsequent_task_list
-            print('task_sequence_for_evolve:', task_sequence_for_evolve)
-            '''continual learning on task_sequence_for_evolve'''
-            for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
-                data_files = {}
-                if evolve_step>=2:
-                    data_files["history_tasks"] = [unseen_tasks_path+task_i for task_i in task_sequence_for_evolve[: evolve_step-1]]
-                data_files["train"] = unseen_tasks_path+train_task_filename
-                data_files["validation"] = test_file
-                raw_datasets = load_dataset("csv", data_files=data_files)
-                column_names = raw_datasets["train"].column_names
-                text_column = column_names[0]
-                summary_column = column_names[1]
+        '''then, start to prepare data'''
+        random.shuffle(subsequent_task_list)
+        task_sequence_for_evolve = [head_task]+subsequent_task_list
+        print('task_sequence_for_evolve:', task_sequence_for_evolve)
+        '''continual learning on task_sequence_for_evolve'''
+        for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
+            data_files = {}
+            if evolve_step>=2:
+                data_files["history_tasks"] = [unseen_tasks_path+task_i+'.csv' for task_i in task_sequence_for_evolve[: evolve_step-1]]
+            data_files["train"] = unseen_tasks_path+train_task_filename+'.csv'
+            if train_task_filename !='IAG':
+                data_files["train_neg"] = unseen_tasks_path+train_task_filename+'.neg.csv'
+            data_files["validation"] = test_file
+            raw_datasets = load_dataset("csv", data_files=data_files)
+            column_names = raw_datasets["train"].column_names
+            text_column = column_names[0]
+            summary_column = column_names[1]
 
-                # Temporarily set max_target_length for training.
-                max_target_length = args.max_target_length
-                padding = "max_length" if args.pad_to_max_length else False
+            # Temporarily set max_target_length for training.
+            max_target_length = args.max_target_length
+            padding = "max_length" if args.pad_to_max_length else False
 
-                def preprocess_function(examples):
-                    '''tokenize, padding'''
-                    inputs = examples[text_column]
-                    targets = examples[summary_column]
-                    '''avoid NoneType in target'''
-                    targets = [inp  if inp is not None else "none" for inp in targets]
-                    model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
+            def preprocess_function(examples):
+                '''tokenize, padding'''
+                inputs = examples[text_column]
+                targets = examples[summary_column]
+                '''avoid NoneType in target'''
+                targets = [inp  if inp is not None else "none" for inp in targets]
+                model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
 
-                    # Setup the tokenizer for targets
-                    with tokenizer.as_target_tokenizer():
-                        labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+                # Setup the tokenizer for targets
+                with tokenizer.as_target_tokenizer():
+                    labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
 
-                    # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
-                    # padding in the loss.
-                    if padding == "max_length" and args.ignore_pad_token_for_loss:
-                        labels["input_ids"] = [
-                            [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
-                        ]
+                # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
+                # padding in the loss.
+                if padding == "max_length" and args.ignore_pad_token_for_loss:
+                    labels["input_ids"] = [
+                        [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
+                    ]
 
-                    model_inputs["labels"] = labels["input_ids"]
-                    return model_inputs
+                model_inputs["labels"] = labels["input_ids"]
+                return model_inputs
 
-                with accelerator.main_process_first():
-                    tokenized_dataset = raw_datasets.map(
-                        preprocess_function,
-                        batched=True,
-                        num_proc=args.preprocessing_num_workers,
-                        remove_columns=column_names,
-                        load_from_cache_file=not args.overwrite_cache,
-                        desc="Running tokenizer on dataset",
-                    )
-                if evolve_step>=2:
-                    history_dataset = tokenized_dataset["history_tasks"]
-                train_dataset = tokenized_dataset["train"]
-                eval_dataset = tokenized_dataset["validation"]#.select(range(200))
-
-                label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
-                data_collator = DataCollatorForSeq2Seq(
-                    tokenizer,
-                    model=model,
-                    label_pad_token_id=label_pad_token_id,
-                    pad_to_multiple_of=8 if accelerator.use_fp16 else None,
+            with accelerator.main_process_first():
+                tokenized_dataset = raw_datasets.map(
+                    preprocess_function,
+                    batched=True,
+                    num_proc=args.preprocessing_num_workers,
+                    remove_columns=column_names,
+                    load_from_cache_file=not args.overwrite_cache,
+                    desc="Running tokenizer on dataset",
                 )
-                if evolve_step>=2:
-                    history_dataloader = DataLoader(history_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
-                    history_dataloader = accelerator.prepare(history_dataloader)
-                    lr_scheduler_history = get_scheduler(
-                        name=args.lr_scheduler_type,
-                        optimizer=history_optimizer,
-                        num_warmup_steps=args.num_warmup_steps,
-                        num_training_steps=args.num_train_epochs*len(history_dataloader),
-                    )
-                train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
-                eval_dataloader = DataLoader(eval_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
+            if evolve_step>=2:
+                history_dataset = tokenized_dataset["history_tasks"]
+            train_dataset = tokenized_dataset["train"]
+            if train_task_filename !='IAG':
+                train_neg_dataset = tokenized_dataset["train_neg"]
+            eval_dataset = tokenized_dataset["validation"]#.select(range(200))
 
-                train_dataloader, eval_dataloader = accelerator.prepare(train_dataloader, eval_dataloader)
-
-                lr_scheduler = get_scheduler(
+            label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
+            data_collator = DataCollatorForSeq2Seq(
+                tokenizer,
+                model=model,
+                label_pad_token_id=label_pad_token_id,
+                pad_to_multiple_of=8 if accelerator.use_fp16 else None,
+            )
+            if evolve_step>=2:
+                history_dataloader = DataLoader(history_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
+                history_dataloader = accelerator.prepare(history_dataloader)
+                lr_scheduler_history = get_scheduler(
                     name=args.lr_scheduler_type,
-                    optimizer=optimizer,
+                    optimizer=history_optimizer,
                     num_warmup_steps=args.num_warmup_steps,
-                    num_training_steps=args.num_train_epochs*len(train_dataloader),
+                    num_training_steps=args.num_train_epochs*len(history_dataloader),
                 )
+            train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
+            if train_task_filename !='IAG':
+                train_neg_dataloader = DataLoader(train_neg_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
+                train_neg_dataloader = accelerator.prepare(train_neg_dataloader)
+            eval_dataloader = DataLoader(eval_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
 
-                if evolve_step>=2:
-                    logger.info("***** Running history training *****")
-                    logger.info(f"  Num examples = {len(history_dataset)}")
-                    logger.info(f"  Num Epochs = {args.num_train_epochs}")
-                    logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
-                    logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-                    logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
+            train_dataloader, eval_dataloader = accelerator.prepare(train_dataloader, eval_dataloader)
 
+            lr_scheduler = get_scheduler(
+                name=args.lr_scheduler_type,
+                optimizer=optimizer,
+                num_warmup_steps=args.num_warmup_steps,
+                num_training_steps=args.num_train_epochs*len(train_dataloader),
+            )
 
-                    # for epoch in range(args.num_train_epochs):
-                    for epoch in trange(args.num_train_epochs, desc="train_history_epochs"):
-                        model.train()
-                        # for step, batch in enumerate(train_dataloader):
-                        for step, batch in enumerate(tqdm(history_dataloader, desc="HistoryTraining")):
-                            outputs = model(**batch)
-                            loss = outputs.loss
-                            loss = loss / args.gradient_accumulation_steps
-                            # print('training loss:', loss)
-                            accelerator.backward(loss)
-                            if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                                optimizer.step()
-                                lr_scheduler_history.step()
-                                optimizer.zero_grad()
+            if evolve_step>=2:
+                logger.info("***** Running history training *****")
+                logger.info(f"  Num examples = {len(history_dataset)}")
+                logger.info(f"  Num Epochs = {args.num_train_epochs}")
+                logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
+                logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
+                logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
+                '''just one epoch for history'''
+                model.train()
+                # for step, batch in enumerate(train_dataloader):
+                for step, batch in enumerate(tqdm(history_dataloader, desc="HistoryTraining")):
+                    outputs = model(**batch)
+                    loss = outputs.loss
+                    loss = loss / args.gradient_accumulation_steps
+                    # print('training loss:', loss)
+                    accelerator.backward(loss)
+                    if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                        optimizer.step()
+                        lr_scheduler_history.step()
+                        optimizer.zero_grad()
 
-
-                logger.info("***** Running training *****")
-                logger.info(f"  Num examples = {len(train_dataset)}")
+            if train_task_filename !='IAG':
+                logger.info("***** Running neg training *****")
+                logger.info(f"  Num examples = {len(train_neg_dataset)}")
                 logger.info(f"  Num Epochs = {args.num_train_epochs}")
                 logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
                 logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
@@ -485,82 +497,108 @@ def main():
                 for epoch in trange(args.num_train_epochs, desc="train_epochs"):
                     model.train()
                     # for step, batch in enumerate(train_dataloader):
-                    for step, batch in enumerate(tqdm(train_dataloader, desc="Training")):
+                    for step, batch in enumerate(tqdm(train_neg_dataloader, desc="NegTraining")):
                         outputs = model(**batch)
                         loss = outputs.loss
                         loss = loss / args.gradient_accumulation_steps
-                        # print('training loss:', loss)
+                        print('training loss:', loss)
                         accelerator.backward(loss)
                         if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                             optimizer.step()
                             lr_scheduler.step()
                             optimizer.zero_grad()
 
-            # store_model(accelerator, model, args.output_dir, tokenizer)
+            logger.info("***** Running training *****")
+            logger.info(f"  Num examples = {len(train_dataset)}")
+            logger.info(f"  Num Epochs = {args.num_train_epochs}")
+            logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
+            logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
+            logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
 
-            '''evaluting'''
-            predictions = []
-            references = []
-            model.eval()
-            if args.val_max_target_length is None:
-                args.val_max_target_length = args.max_target_length
 
-            gen_kwargs = {
-                "max_length": args.val_max_target_length if args is not None else config.max_length,
-                "num_beams": args.num_beams,
-            }
+            # for epoch in range(args.num_train_epochs):
+            for epoch in trange(args.num_train_epochs, desc="train_epochs"):
+                model.train()
+                # for step, batch in enumerate(train_dataloader):
+                for step, batch in enumerate(tqdm(train_dataloader, desc="Training")):
+                    outputs = model(**batch)
+                    loss = outputs.loss
+                    loss = loss / args.gradient_accumulation_steps
+                    print('training loss:', loss)
+                    accelerator.backward(loss)
+                    if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                        optimizer.step()
+                        lr_scheduler.step()
+                        optimizer.zero_grad()
 
-            for step, batch in enumerate(tqdm(eval_dataloader, desc="Evaluating")):
-                with torch.no_grad():
-                    generated_tokens = accelerator.unwrap_model(model).generate(
-                        batch["input_ids"],
-                        attention_mask=batch["attention_mask"],
-                        **gen_kwargs,
-                    )
+        # store_model(accelerator, model, args.output_dir, tokenizer)
 
-                    generated_tokens = accelerator.pad_across_processes(
-                        generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
-                    )
-                    labels = batch["labels"]
-                    if not args.pad_to_max_length:
-                        # If we did not pad to max length, we need to pad the labels too
-                        labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
+        '''evaluting'''
+        # csvfile = codecs.open(args.output_dir+'gold_and_pred.csv', 'w', 'utf-8')
+        # fieldnames = ['gold', 'output']
+        # writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        # writer.writeheader()
+        predictions = []
+        references = []
+        model.eval()
+        if args.val_max_target_length is None:
+            args.val_max_target_length = args.max_target_length
 
-                    generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
-                    labels = accelerator.gather(labels).cpu().numpy()
+        gen_kwargs = {
+            "max_length": args.val_max_target_length if args is not None else config.max_length,
+            "num_beams": args.num_beams,
+        }
 
-                    if args.ignore_pad_token_for_loss:
-                        # Replace -100 in the labels as we can't decode them.
-                        labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-                    if isinstance(generated_tokens, tuple):
-                        generated_tokens = generated_tokens[0]
-                    decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-                    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+        for step, batch in enumerate(tqdm(eval_dataloader, desc="Evaluating")):
+            with torch.no_grad():
+                generated_tokens = accelerator.unwrap_model(model).generate(
+                    batch["input_ids"],
+                    attention_mask=batch["attention_mask"],
+                    **gen_kwargs,
+                )
 
-                    decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
-                    predictions+=decoded_preds
-                    references+=decoded_labels
+                generated_tokens = accelerator.pad_across_processes(
+                    generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
+                )
+                labels = batch["labels"]
+                if not args.pad_to_max_length:
+                    # If we did not pad to max length, we need to pad the labels too
+                    labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
 
-                    # metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-            # result = metric.compute(use_stemmer=True)
-            result = metric.compute(predictions=predictions, references=references, use_stemmer=True)
-            # Extract a few results from ROUGE
-            result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
+                generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
+                labels = accelerator.gather(labels).cpu().numpy()
 
-            result = {k: round(v, 4) for k, v in result.items()}
+                if args.ignore_pad_token_for_loss:
+                    # Replace -100 in the labels as we can't decode them.
+                    labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+                if isinstance(generated_tokens, tuple):
+                    generated_tokens = generated_tokens[0]
+                decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+                decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
-            # logger.info(result)
+                decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+                predictions+=decoded_preds
+                references+=decoded_labels
+                # for i in range(len(decoded_preds)):
+                #     writer.writerow({'gold': decoded_preds[i].strip(), 'output': decoded_labels[i].strip()})
+                # metric.add_batch(predictions=decoded_preds, references=decoded_labels)
+        # csvfile.close()
+        result = metric.compute(predictions=predictions, references=references, use_stemmer=True)
+        # result = metric.compute(use_stemmer=True)
+        # Extract a few results from ROUGE
 
-            rouge_L = result["rougeL"]
+        result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
 
-            print('rouge_L:', rouge_L)
-            head_task_performance_list.append(rouge_L)
-            accelerator.free_memory()
-        assert len(head_task_performance_list) == repeat_times
-        i_mean_std = computer_mean_std(head_task_performance_list)
-        print(unseen_task, ' performance: ', i_mean_std)
-        unseen_task_2_performance[unseen_task] = i_mean_std
-    print('\nunseen_task_2_performance:', unseen_task_2_performance)
+        result = {k: round(v, 4) for k, v in result.items()}
+
+        rouge_L = result["rougeL"]
+
+        print('rouge_L:', rouge_L)
+        head_task_performance_list.append(rouge_L)
+        accelerator.free_memory()
+    assert len(head_task_performance_list) == repeat_times
+    i_mean_std = computer_mean_std(head_task_performance_list)
+    print(args.target_task, ' performance: ', i_mean_std)
 
 
 def store_model(accele, model, output_dir, tokenizer):
@@ -591,10 +629,11 @@ if __name__ == "__main__":
     main()
 
 
+
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=1 python -u InstructionSpeak_backward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 --learning_rate_decay 0.5> log.instructspeak.backward.decau.0.5.txt 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u InstructionSpeak_backward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --learning_rate_decay 0.5 --target_task CF > log.instructspeak.backward.CF.txt 2>&1
 
 
 
