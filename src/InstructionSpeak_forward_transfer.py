@@ -603,7 +603,7 @@ def main():
         accelerator.free_memory()
     assert len(tail_task_performance_list) == repeat_times
     i_mean_std = computer_mean_std(tail_task_performance_list)
-    print(unseen_task, ' performance: ', i_mean_std)
+    print(args.target_task, ' performance: ', i_mean_std)
     # unseen_task_2_performance[unseen_task] = i_mean_std
     # print('\nunseen_task_2_performance:', unseen_task_2_performance)
 
