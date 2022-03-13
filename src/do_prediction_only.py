@@ -594,4 +594,16 @@ IAG: 11.7413
 MM:
 VF:
 
+CUDA_VISIBLE_DEVICES=2 python -u do_prediction_only.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_5e-06epoch_0 --validation_file /home/tup51337/dataset/Natural-Instructions/test_tasks_csv/CF.csv --per_device_eval_batch_size=40 --preprocessing_num_workers 3
+@epoch 0
+
+CF: 51.7241
+
+@epoch 1
+QG: 51.83
+
+CF: 62.56
+IAG: 11.93
+MM: 84.33
+
 '''
