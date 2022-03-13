@@ -352,10 +352,11 @@ def main():
                     "weight_decay": 0.0,
                 },
             ]
+            history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*0.1)
             optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
             metric = load_metric("rouge")
             total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-            model, optimizer = accelerator.prepare(model, optimizer)
+            model, optimizer, history_optimizer = accelerator.prepare(model, optimizer, history_optimizer)
 
             '''then, start to prepare data'''
             random.shuffle(subsequent_task_list)
@@ -364,7 +365,8 @@ def main():
             '''continual learning on task_sequence_for_evolve'''
             for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
                 data_files = {}
-                data_files["train"] = [unseen_tasks_path+task_i for task_i in task_sequence_for_evolve[: evolve_step+1]]#unseen_tasks_path+train_task_filename
+                data_files["history_tasks"] = [unseen_tasks_path+task_i for task_i in task_sequence_for_evolve[: evolve_step-1]] if evolve_step>=2
+                data_files["train"] = unseen_tasks_path+train_task_filename
                 data_files["validation"] = test_file
                 raw_datasets = load_dataset("csv", data_files=data_files)
                 column_names = raw_datasets["train"].column_names
@@ -406,6 +408,8 @@ def main():
                         load_from_cache_file=not args.overwrite_cache,
                         desc="Running tokenizer on dataset",
                     )
+                if evolve_step>=2:
+                    history_dataset = tokenized_dataset["history_tasks"]
                 train_dataset = tokenized_dataset["train"]
                 eval_dataset = tokenized_dataset["validation"]#.select(range(200))
 
@@ -416,7 +420,15 @@ def main():
                     label_pad_token_id=label_pad_token_id,
                     pad_to_multiple_of=8 if accelerator.use_fp16 else None,
                 )
-
+                if evolve_step>=2:
+                    history_dataloader = DataLoader(history_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
+                    history_dataloader = accelerator.prepare(history_dataloader)
+                    lr_scheduler_history = get_scheduler(
+                        name=args.lr_scheduler_type,
+                        optimizer=history_optimizer,
+                        num_warmup_steps=args.num_warmup_steps,
+                        num_training_steps=args.num_train_epochs*len(history_dataloader),
+                    )
                 train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
                 eval_dataloader = DataLoader(eval_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
 
@@ -428,6 +440,30 @@ def main():
                     num_warmup_steps=args.num_warmup_steps,
                     num_training_steps=args.num_train_epochs*len(train_dataloader),
                 )
+
+                if evolve_step>=2:
+                    logger.info("***** Running history training *****")
+                    logger.info(f"  Num examples = {len(history_dataset)}")
+                    logger.info(f"  Num Epochs = {args.num_train_epochs}")
+                    logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
+                    logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
+                    logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
+
+
+                    # for epoch in range(args.num_train_epochs):
+                    for epoch in trange(args.num_train_epochs, desc="train_history_epochs"):
+                        model.train()
+                        # for step, batch in enumerate(train_dataloader):
+                        for step, batch in enumerate(tqdm(history_dataloader, desc="HistoryTraining")):
+                            outputs = model(**batch)
+                            loss = outputs.loss
+                            loss = loss / args.gradient_accumulation_steps
+                            # print('training loss:', loss)
+                            accelerator.backward(loss)
+                            if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                                optimizer.step()
+                                lr_scheduler_history.step()
+                                optimizer.zero_grad()
 
 
                 logger.info("***** Running training *****")
