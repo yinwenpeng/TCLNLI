@@ -470,22 +470,19 @@ def main():
                 logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
                 logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
                 logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
-
-
-                # for epoch in range(args.num_train_epochs):
-                for epoch in trange(args.num_train_epochs, desc="train_history_epochs"):
-                    model.train()
-                    # for step, batch in enumerate(train_dataloader):
-                    for step, batch in enumerate(tqdm(history_dataloader, desc="HistoryTraining")):
-                        outputs = model(**batch)
-                        loss = outputs.loss
-                        loss = loss / args.gradient_accumulation_steps
-                        # print('training loss:', loss)
-                        accelerator.backward(loss)
-                        if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                            optimizer.step()
-                            lr_scheduler_history.step()
-                            optimizer.zero_grad()
+                '''just one epoch for history'''
+                model.train()
+                # for step, batch in enumerate(train_dataloader):
+                for step, batch in enumerate(tqdm(history_dataloader, desc="HistoryTraining")):
+                    outputs = model(**batch)
+                    loss = outputs.loss
+                    loss = loss / args.gradient_accumulation_steps
+                    # print('training loss:', loss)
+                    accelerator.backward(loss)
+                    if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                        optimizer.step()
+                        lr_scheduler_history.step()
+                        optimizer.zero_grad()
 
             if train_task_filename !='IAG':
                 logger.info("***** Running neg training *****")
@@ -634,6 +631,7 @@ def computer_mean_std(value_list):
 
 if __name__ == "__main__":
     main()
+
 
 
 '''
