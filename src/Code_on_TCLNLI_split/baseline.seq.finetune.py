@@ -500,7 +500,7 @@ def main():
                     lr_scheduler.step()
                     optimizer.zero_grad()
         '''prepare for evolution'''
-        unseen_tasks = [  task_i if task_i not in training_tasks for task_i in all_task_list]
+        unseen_tasks = [  task_i for task_i in all_task_list if task_i not in training_tasks]
         for _ in range(repeat_times):
             '''random choose a target_task'''
             random.shuffle(unseen_tasks)
