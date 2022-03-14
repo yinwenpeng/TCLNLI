@@ -353,7 +353,7 @@ def main():
     for _ in range(args.repeat_times):
         base_tasks = random.sample(all_task_list, args.training_size)
         unseen_tasks = [  task_i for task_i in all_task_list if task_i not in base_tasks]
-        print('Base tasks: ', base_tasks)
+        # print('Base tasks: ', base_tasks)
         '''first prepare a fresh model and tokenizer'''
         config = AutoConfig.from_pretrained(args.model_name_or_path)
         tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
@@ -446,6 +446,7 @@ def main():
 
 
         logger.info("***** Running base training *****")
+        print('Base tasks: ', base_tasks)
         logger.info(f"  Num examples = {len(base_dataset)}")
 
         # for epoch in range(args.num_train_epochs):
@@ -532,8 +533,8 @@ def main():
                     desc="Running tokenizer on target dataset",
                 )
             target_dataset = tokenized_target_dataset["target"]
-            if eval_truncate and eval_truncate< len(target_dataset):
-                target_dataset = target_dataset.select(random.sample(range(0, len(target_dataset)), eval_truncate))
+            if args.eval_truncate and args.eval_truncate< len(target_dataset):
+                target_dataset = target_dataset.select(random.sample(range(0, len(target_dataset)), args.eval_truncate))
 
 
             label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
