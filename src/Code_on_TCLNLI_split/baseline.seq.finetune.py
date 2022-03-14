@@ -368,7 +368,7 @@ def main():
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
     metric = load_metric("rouge")
     total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-    model, optimizer = accelerator.prepare(model, optimizer)
+    # model, optimizer = accelerator.prepare(model, optimizer)
 
             # Temporarily set max_target_length for training.
     max_target_length = args.max_target_length
@@ -490,6 +490,7 @@ def main():
                 args.model_name_or_path,
                 from_tf=bool(".ckpt" in args.model_name_or_path),
                 config=config)
+        model, optimizer = accelerator.prepare(model, optimizer)
 
         training_tasks = random.sample(all_task_list, args.training_size)
         print('Base tasks: ', training_tasks)
@@ -518,6 +519,7 @@ def main():
                     args.output_dir,
                     from_tf=bool(".ckpt" in args.output_dir),
                     config=config)
+            model, optimizer = accelerator.prepare(model, optimizer)
             random.shuffle(unseen_tasks)
             target_task_id = random.randint(0, len(all_task_list)-args.training_size-40)
             print('\ntarget_task_id: ', target_task_id, '\n')
