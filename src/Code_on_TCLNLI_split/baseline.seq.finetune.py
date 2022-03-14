@@ -258,7 +258,7 @@ def parse_args():
     parser.add_argument(
         "--training_size",
         type=int,
-        default=1,
+        default=5,
         help="Number of updates steps to accumulate before performing a backward/update pass.",
     )
     parser.add_argument(
@@ -605,7 +605,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES="0,2" accelerate launch baseline.seq.finetune.py --model_name_or_path facebook/bart-base --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 > log.instructspeak.backward.AG.txt 2>&1
+CUDA_VISIBLE_DEVICES="0,2" accelerate launch baseline.seq.finetune.py --model_name_or_path facebook/bart-base --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 > log.instructspeak.backward.AG.txt 2>&1
 
 
 
