@@ -427,6 +427,7 @@ def main():
             num_warmup_steps=args.num_warmup_steps,
             num_training_steps=args.num_train_epochs*len(real_dataloader),
         )
+        print(file_name_list, ' data loader prepared over.')
         return real_dataloader, lr_scheduler, tokened_dataset
 
     def evaluate(eval_dataloader):
@@ -501,7 +502,7 @@ def main():
                     optimizer.step()
                     lr_scheduler.step()
                     optimizer.zero_grad()
-        '''prepare for evolution'''
+        print('Prepare for evolution...')
         unseen_tasks = [  task_i for task_i in all_task_list if task_i not in training_tasks]
         for _ in range(repeat_times):
             '''random choose a target_task'''
@@ -522,21 +523,20 @@ def main():
                 logger.info(f"  Num examples = {len(train_dataset)}")
                 model.train()
                 # for step, batch in enumerate(train_dataloader):
-                for step, batch in enumerate(tqdm(train_dataloader, desc="EvolvTraining")):
+                for step, batch in enumerate(tqdm(train_dataloader, desc="EvolvSingleTask")):
                     outputs = model(**batch)
                     loss = outputs.loss
                     loss = loss / args.gradient_accumulation_steps
-                    # print('training loss:', loss)
                     accelerator.backward(loss)
                     if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                         optimizer.step()
                         lr_scheduler.step()
                         optimizer.zero_grad()
-            '''test on target task'''
+            print('Test on target task....')
             target_task_filename = all_task_example_path+target_task+'.csv'
             target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
             old_rouge_L = evaluate(model, target_dataloader)
-
+            print('Initial rouge_L: ', old_rouge_L)
             '''keep continual learning on subsequent tasks'''
             for evolve_step, train_task_filename in enumerate(tasks_after_target):
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
