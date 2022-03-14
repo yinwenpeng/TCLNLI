@@ -256,6 +256,12 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--eval_truncate",
+        type=int,
+        default=1000,
+        help="Number of updates steps to accumulate before performing a backward/update pass.",
+    )
+    parser.add_argument(
         "--training_size",
         type=int,
         default=5,
@@ -403,7 +409,7 @@ def main():
         pad_to_multiple_of=8 if accelerator.use_fp16 else None,
     )
 
-    def from_file_to_dataLoader(file_name_list=None, shuffle_flag=True, batch_size=None, eval_truncate=1000):
+    def from_file_to_dataLoader(file_name_list=None, shuffle_flag=True, batch_size=None, eval_truncate=False):
         data_files = {}
         data_files["train"] = file_name_list#[all_task_example_path+task_i+'.csv' for task_i in training_tasks]
         raw_datasets = load_dataset("csv", data_files=data_files)
@@ -533,7 +539,7 @@ def main():
             assert len(tasks_until_target)+len(tasks_after_target) == len(unseen_tasks)
 
             target_task_filename = all_task_example_path+target_task+'.csv'
-            target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size, eval_truncate=1000)
+            target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size, eval_truncate=args.eval_truncate)
 
 
             '''continual learning on task_sequence_for_evolve'''
@@ -625,7 +631,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 > log.instructspeak.backward.AG.txt 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 1000 > log.instructspeak.backward.AG.txt 2>&1
 
 
 
