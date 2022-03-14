@@ -402,12 +402,7 @@ def main():
         label_pad_token_id=label_pad_token_id,
         pad_to_multiple_of=8 if accelerator.use_fp16 else None,
     )
-    lr_scheduler = get_scheduler(
-        name=args.lr_scheduler_type,
-        optimizer=optimizer,
-        num_warmup_steps=args.num_warmup_steps,
-        num_training_steps=args.num_train_epochs*len(train_dataloader),
-    )
+
     def from_file_to_dataLoader(file_name_list=None, shuffle_flag=True, batch_size=None):
         data_files["train"] = file_name_list#[all_task_example_path+task_i+'.csv' for task_i in training_tasks]
         raw_datasets = load_dataset("csv", data_files=data_files)
@@ -425,7 +420,13 @@ def main():
         tokened_dataset = tokenized_train_dataset["train"]
         real_dataloader = DataLoader(tokened_dataset, shuffle=shuffle_flag, collate_fn=data_collator, batch_size=batch_size)
         real_dataloader = accelerator.prepare(real_dataloader)
-        return real_dataloader, tokened_dataset
+        lr_scheduler = get_scheduler(
+            name=args.lr_scheduler_type,
+            optimizer=optimizer,
+            num_warmup_steps=args.num_warmup_steps,
+            num_training_steps=args.num_train_epochs*len(real_dataloader),
+        )
+        return real_dataloader, lr_scheduler, tokened_dataset
 
     def evaluate(eval_dataloader):
         predictions = []
@@ -485,7 +486,7 @@ def main():
         training_tasks = random.sample(all_task_list, args.training_size)
         '''pretrain 3 epochs on base training tasks'''
         base_tasks = [all_task_example_path+task_i+'.csv' for task_i in training_tasks]
-        train_dataloader, _ = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size)
+        train_dataloader, lr_scheduler, _ = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size)
         logger.info("***** Running training on base tasks *****")
         logger.info(f"  Num examples = {len(train_dataset)}")
         for _ in trange(args.num_train_epochs, desc="train_epochs"):
@@ -514,7 +515,7 @@ def main():
             '''continual learning on task_sequence_for_evolve'''
             for evolve_step, train_task_filename in enumerate(tasks_until_target):
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
-                train_dataloader, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
+                train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
 
                 logger.info("***** Running training until target*****")
                 logger.info(f"  Num examples = {len(train_dataset)}")
@@ -528,17 +529,17 @@ def main():
                     accelerator.backward(loss)
                     if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                         optimizer.step()
-                        lr_scheduler_history.step()
+                        lr_scheduler.step()
                         optimizer.zero_grad()
             '''test on target task'''
             target_task_filename = all_task_example_path+target_task+'.csv'
-            target_dataloader, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
+            target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
             old_rouge_L = evaluate(model, target_dataloader)
 
             '''keep continual learning on subsequent tasks'''
             for evolve_step, train_task_filename in enumerate(tasks_after_target):
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
-                train_dataloader, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
+                train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
 
                 logger.info("***** Running training until target*****")
                 logger.info(f"  Num examples = {len(train_dataset)}")
@@ -552,7 +553,7 @@ def main():
                     accelerator.backward(loss)
                     if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                         optimizer.step()
-                        lr_scheduler_history.step()
+                        lr_scheduler.step()
                         optimizer.zero_grad()
                 if evolve_step+1 in set([1,10,20,30,40]):
                     '''backward evaluate on target task'''
