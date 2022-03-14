@@ -271,7 +271,7 @@ def parse_args():
     parser.add_argument(
         "--num_warmup_steps", type=int, default=0, help="Number of steps for the warmup in the lr scheduler."
     )
-    # parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
+    parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
     parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
     parser.add_argument(
         "--model_type",
@@ -332,16 +332,16 @@ def main():
     if args.seed is not None:
         set_seed(args.seed)
 
-    # Handle the repository creation
-    # if accelerator.is_main_process:
-    #     if args.push_to_hub:
-    #         if args.hub_model_id is None:
-    #             repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
-    #         else:
-    #             repo_name = args.hub_model_id
-    #         repo = Repository(args.output_dir, clone_from=repo_name)
-    #     elif args.output_dir is not None:
-    #         os.makedirs(args.output_dir, exist_ok=True)
+    Handle the repository creation
+    if accelerator.is_main_process:
+        if args.push_to_hub:
+            if args.hub_model_id is None:
+                repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
+            else:
+                repo_name = args.hub_model_id
+            repo = Repository(args.output_dir, clone_from=repo_name)
+        elif args.output_dir is not None:
+            os.makedirs(args.output_dir, exist_ok=True)
     accelerator.wait_for_everyone()
 
     config = AutoConfig.from_pretrained(args.model_name_or_path)
@@ -430,7 +430,7 @@ def main():
         print(file_name_list, ' data loader prepared over.')
         return real_dataloader, lr_scheduler, tokened_dataset
 
-    def evaluate(eval_dataloader):
+    def evaluate(eval_dataloader, model):
         predictions = []
         references = []
         model.eval()
@@ -485,6 +485,12 @@ def main():
     unseen_tasks_neg_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV/'
     repeat_times = 2
     for _ in range(repeat_times):
+        '''start with a new model'''
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+                args.model_name_or_path,
+                from_tf=bool(".ckpt" in args.model_name_or_path),
+                config=config)
+
         training_tasks = random.sample(all_task_list, args.training_size)
         print('Base tasks: ', training_tasks)
         '''pretrain 3 epochs on base training tasks'''
@@ -503,10 +509,15 @@ def main():
                     optimizer.step()
                     lr_scheduler.step()
                     optimizer.zero_grad()
+        store_model(accelerator, model, args.output_dir, tokenizer)
         print('Prepare for evolution...')
         unseen_tasks = [  task_i for task_i in all_task_list if task_i not in training_tasks]
         for _ in range(repeat_times):
             '''random choose a target_task'''
+            model = AutoModelForSeq2SeqLM.from_pretrained(
+                    args.output_dir,
+                    from_tf=bool(".ckpt" in args.output_dir),
+                    config=config)
             random.shuffle(unseen_tasks)
             target_task_id = random.randint(0, len(all_task_list)-args.training_size-40)
             print('\ntarget_task_id: ', target_task_id, '\n')
@@ -525,7 +536,8 @@ def main():
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
                 train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
 
-                logger.info("***** Running training until target*****")
+                print('***** Running training ', evolve_step, ' until target ', len(tasks_until_target), ' ....' )
+                # logger.info("***** Running training until target*****")
                 logger.info(f"  Num examples = {len(train_dataset)}")
                 model.train()
                 # for step, batch in enumerate(train_dataloader):
@@ -541,14 +553,14 @@ def main():
             print('Test on target task....')
             # target_task_filename = all_task_example_path+target_task+'.csv'
             # target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
-            old_rouge_L = evaluate(target_dataloader)
+            old_rouge_L = evaluate(target_dataloader, model)
             print('Initial rouge_L: ', old_rouge_L)
             '''keep continual learning on subsequent tasks'''
             for evolve_step, train_task_filename in enumerate(tasks_after_target):
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
                 train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
 
-                logger.info("***** Running training on subsequent tasks*****")
+                print('***** Running training', evolve_step, ' on subsequent tasks ', len(tasks_after_target), ' ....' )
                 logger.info(f"  Num examples = {len(train_dataset)}")
                 model.train()
                 # for step, batch in enumerate(train_dataloader):
@@ -564,8 +576,9 @@ def main():
                         optimizer.zero_grad()
                 if evolve_step+1 in set([1,10,20,30,40]):
                     '''backward evaluate on target task'''
-                    new_rouge_L = evaluate(target_dataloader)
+                    new_rouge_L = evaluate(target_dataloader, model)
                     rouge_change = new_rouge_L-old_rouge_L
+                    print('>>>old_rouge_L:', old_rouge_L, ' new_rouge_L:', new_rouge_L, ' rouge_change:', rouge_change)
                     delta_performance[evolve_step+1].append(rouge_change)
         tmp_result = compute_for_dict(delta_performance)
         print('For this set of base tasks: ', tmp_result)
@@ -607,7 +620,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 > log.instructspeak.backward.AG.txt 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 > log.instructspeak.backward.AG.txt 2>&1
 
 
 
