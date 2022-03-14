@@ -53,6 +53,7 @@ from transformers.file_utils import get_full_repo_name, is_offline_mode
 from transformers.utils.versions import require_version
 from compute_mean_std import compute_for_dict
 from load_tasks import load_task_list
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
