@@ -549,6 +549,9 @@ def main():
             target_task_filename = all_task_example_path+target_task+'.csv'
             target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size, eval_truncate=args.eval_truncate)
 
+            print('Test on target task....')
+            base_rouge_L = evaluate(target_dataloader, model)
+            print('Base rouge_L: ', base_rouge_L)
 
             '''continual learning on task_sequence_for_evolve'''
             for evolve_step, train_task_filename in enumerate(tasks_until_target):
@@ -572,7 +575,8 @@ def main():
 
             print('Test on target task....')
             old_rouge_L = evaluate(target_dataloader, model)
-            print('Initial rouge_L: ', old_rouge_L)
+            print('Initial rouge_L: ', old_rouge_L, 'Base rouge_L: ', base_rouge_L)
+            exit(0)
 
             '''keep continual learning on subsequent tasks'''
             for evolve_step, train_task_filename in enumerate(tasks_after_target):
@@ -639,7 +643,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 > log.seq.finetune.backward 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 > log.seq.finetune.backward.txt 2>&1
 
 
 
