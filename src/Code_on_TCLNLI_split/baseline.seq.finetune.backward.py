@@ -495,7 +495,7 @@ def main():
 
             '''then, start to prepare data'''
             random.shuffle(unseen_tasks)
-            target_task_id = random.randint(0, len(all_task_list)-args.training_size-40)
+            target_task_id = random.randint(0, len(all_task_list)-args.training_size-40-1)
             print('\ntarget_task_id: ', target_task_id, '\n')
             target_task = unseen_tasks[target_task_id]
             target_task_filename = all_task_example_path+target_task+'.csv'
