@@ -51,9 +51,14 @@ from transformers import (
 )
 from transformers.file_utils import get_full_repo_name, is_offline_mode
 from transformers.utils.versions import require_version
-from compute_mean_std import compute_for_dict, computer_mean_std_given_list
+from compute_mean_std import compute_for_dict# computer_mean_std_given_list
 from load_tasks import load_task_list
 from collections import defaultdict
+import statistics
+def computer_mean_std_given_list(value_list):
+    average = round(sum(value_list)/len(value_list), 2)
+    res = round(statistics.pstdev(value_list),2)
+    return str(average)+'/'+str(res)
 
 logger = logging.getLogger(__name__)
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
@@ -701,7 +706,7 @@ if __name__ == "__main__":
 
 "sequential finetune on instructions"
 
-CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.forward.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp4 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 --forward_distance 1 
+CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.forward.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp4 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 --forward_distance 1
 
 
 '''
