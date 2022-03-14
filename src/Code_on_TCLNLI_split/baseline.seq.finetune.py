@@ -486,6 +486,7 @@ def main():
     repeat_times = 2
     for _ in range(repeat_times):
         training_tasks = random.sample(all_task_list, args.training_size)
+        print('Base tasks: ', training_tasks)
         '''pretrain 3 epochs on base training tasks'''
         base_tasks = [all_task_example_path+task_i+'.csv' for task_i in training_tasks]
         train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size)
@@ -535,7 +536,7 @@ def main():
             print('Test on target task....')
             target_task_filename = all_task_example_path+target_task+'.csv'
             target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
-            old_rouge_L = evaluate(model, target_dataloader)
+            old_rouge_L = evaluate(target_dataloader)
             print('Initial rouge_L: ', old_rouge_L)
             '''keep continual learning on subsequent tasks'''
             for evolve_step, train_task_filename in enumerate(tasks_after_target):
@@ -561,7 +562,7 @@ def main():
 
                     target_task_filename = all_task_example_path+target_task+'.csv'
                     target_dataloader, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
-                    new_rouge_L = evaluate(model, target_dataloader)
+                    new_rouge_L = evaluate(target_dataloader)
                     rouge_change = new_rouge_L-old_rouge_L
                     delta_performance[evolve_step+1].append(rouge_change)
         tmp_result = compute_for_dict(delta_performance)
