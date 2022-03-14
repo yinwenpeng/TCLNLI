@@ -34,6 +34,7 @@ import codecs
 from datasets import load_dataset, load_metric
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
+from collections import defaultdict
 import statistics
 import transformers
 from accelerate import Accelerator
@@ -53,7 +54,7 @@ from transformers import (
 )
 from transformers.file_utils import get_full_repo_name, is_offline_mode
 from transformers.utils.versions import require_version
-
+from load_tasks import load_task_list
 
 logger = logging.getLogger(__name__)
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/summarization/requirements.txt")
@@ -208,6 +209,13 @@ def parse_args():
         action="store_true",
         help="If passed, will use a slow tokenizer (not backed by the 🤗 Tokenizers library).",
     )
+
+    parser.add_argument(
+        "--per_device_base_train_batch_size",
+        type=int,
+        default=8,
+        help="Batch size (per device) for the training dataloader.",
+    )
     parser.add_argument(
         "--per_device_train_batch_size",
         type=int,
@@ -246,6 +254,13 @@ def parse_args():
         default=1,
         help="Number of updates steps to accumulate before performing a backward/update pass.",
     )
+
+    parser.add_argument(
+        "--training_size",
+        type=int,
+        default=1,
+        help="Number of updates steps to accumulate before performing a backward/update pass.",
+    )
     parser.add_argument(
         "--lr_scheduler_type",
         type=SchedulerType,
@@ -256,7 +271,7 @@ def parse_args():
     parser.add_argument(
         "--num_warmup_steps", type=int, default=0, help="Number of steps for the warmup in the lr scheduler."
     )
-    parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
+    # parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
     parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
     parser.add_argument(
         "--model_type",
@@ -318,226 +333,101 @@ def main():
         set_seed(args.seed)
 
     # Handle the repository creation
-    if accelerator.is_main_process:
-        if args.push_to_hub:
-            if args.hub_model_id is None:
-                repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
-            else:
-                repo_name = args.hub_model_id
-            repo = Repository(args.output_dir, clone_from=repo_name)
-        elif args.output_dir is not None:
-            os.makedirs(args.output_dir, exist_ok=True)
+    # if accelerator.is_main_process:
+    #     if args.push_to_hub:
+    #         if args.hub_model_id is None:
+    #             repo_name = get_full_repo_name(Path(args.output_dir).name, token=args.hub_token)
+    #         else:
+    #             repo_name = args.hub_model_id
+    #         repo = Repository(args.output_dir, clone_from=repo_name)
+    #     elif args.output_dir is not None:
+    #         os.makedirs(args.output_dir, exist_ok=True)
     accelerator.wait_for_everyone()
 
+    config = AutoConfig.from_pretrained(args.model_name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
+    model = AutoModelForSeq2SeqLM.from_pretrained(
+            args.model_name_or_path,
+            from_tf=bool(".ckpt" in args.model_name_or_path),
+            config=config)
 
-
-
-    # Preprocessing the datasets.
-    # First we tokenize all the texts.
-    unseen_tasks_path = '/home/tup51337/dataset/Natural-Instructions/test_tasks_instruction_into_examples_csv/'
-    unseen_task_sequence = ['QG', 'AG', 'CF', 'IAG', 'MM', 'VF']
-    # unseen_task_2_performance = {}
-    # for unseen_task in unseen_task_sequence:
-    head_task = args.target_task#unseen_task
-    test_file = '/home/tup51337/dataset/Natural-Instructions/test_tasks_csv/'+head_task+'.csv'
-    subsequent_task_list = [task_i for task_i in unseen_task_sequence if task_i != head_task]
-    head_task_performance_list = []
-    repeat_times = 10
-    for repeat_i in range(repeat_times):
-        '''first prepare a fresh model and tokenizer'''
-        config = AutoConfig.from_pretrained(args.model_name_or_path)
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
-        model = AutoModelForSeq2SeqLM.from_pretrained(
-                args.model_name_or_path,
-                from_tf=bool(".ckpt" in args.model_name_or_path),
-                config=config)
-
-        model.resize_token_embeddings(len(tokenizer))
-        if model.config.decoder_start_token_id is None:
-            raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
-        no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-            {
-                "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-                "weight_decay": args.weight_decay,
-            },
-            {
-                "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-                "weight_decay": 0.0,
-            },
-        ]
-        history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
-        optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
-        metric = load_metric("rouge")
-        total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-        model, optimizer, history_optimizer = accelerator.prepare(model, optimizer, history_optimizer)
-
-        '''then, start to prepare data'''
-        random.shuffle(subsequent_task_list)
-        task_sequence_for_evolve = [head_task]+subsequent_task_list
-        print('task_sequence_for_evolve:', task_sequence_for_evolve)
-        '''continual learning on task_sequence_for_evolve'''
-        for evolve_step, train_task_filename in enumerate(task_sequence_for_evolve):
-            data_files = {}
-            if evolve_step>=2:
-                data_files["history_tasks"] = [unseen_tasks_path+task_i+'.csv' for task_i in task_sequence_for_evolve[: evolve_step-1]]
-            data_files["train"] = unseen_tasks_path+train_task_filename+'.csv'
-            if train_task_filename !='IAG':
-                data_files["train_neg"] = unseen_tasks_path+train_task_filename+'.neg.csv'
-            data_files["validation"] = test_file
-            raw_datasets = load_dataset("csv", data_files=data_files)
-            column_names = raw_datasets["train"].column_names
-            text_column = column_names[0]
-            summary_column = column_names[1]
+    model.resize_token_embeddings(len(tokenizer))
+    if model.config.decoder_start_token_id is None:
+        raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
+    no_decay = ["bias", "LayerNorm.weight"]
+    optimizer_grouped_parameters = [
+        {
+            "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+            "weight_decay": args.weight_decay,
+        },
+        {
+            "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+            "weight_decay": 0.0,
+        },
+    ]
+    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+    metric = load_metric("rouge")
+    total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
+    model, optimizer = accelerator.prepare(model, optimizer)
 
             # Temporarily set max_target_length for training.
-            max_target_length = args.max_target_length
-            padding = "max_length" if args.pad_to_max_length else False
+    max_target_length = args.max_target_length
+    padding = "max_length" if args.pad_to_max_length else False
+    def preprocess_function(examples):
+        '''tokenize, padding'''
+        inputs = examples["input"]
+        targets = examples["output"]
+        '''avoid NoneType in target'''
+        targets = [inp  if inp is not None else "none" for inp in targets]
+        model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
 
-            def preprocess_function(examples):
-                '''tokenize, padding'''
-                inputs = examples[text_column]
-                targets = examples[summary_column]
-                '''avoid NoneType in target'''
-                targets = [inp  if inp is not None else "none" for inp in targets]
-                model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
+        # Setup the tokenizer for targets
+        with tokenizer.as_target_tokenizer():
+            labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
 
-                # Setup the tokenizer for targets
-                with tokenizer.as_target_tokenizer():
-                    labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+        # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
+        # padding in the loss.
+        if padding == "max_length" and args.ignore_pad_token_for_loss:
+            labels["input_ids"] = [
+                [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
+            ]
 
-                # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
-                # padding in the loss.
-                if padding == "max_length" and args.ignore_pad_token_for_loss:
-                    labels["input_ids"] = [
-                        [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
-                    ]
+        model_inputs["labels"] = labels["input_ids"]
+        return model_inputs
 
-                model_inputs["labels"] = labels["input_ids"]
-                return model_inputs
+    label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
+    data_collator = DataCollatorForSeq2Seq(
+        tokenizer,
+        model=model,
+        label_pad_token_id=label_pad_token_id,
+        pad_to_multiple_of=8 if accelerator.use_fp16 else None,
+    )
+    lr_scheduler = get_scheduler(
+        name=args.lr_scheduler_type,
+        optimizer=optimizer,
+        num_warmup_steps=args.num_warmup_steps,
+        num_training_steps=args.num_train_epochs*len(train_dataloader),
+    )
+    def from_file_to_dataLoader(file_name_list=None, shuffle_flag=True, batch_size=None):
+        data_files["train"] = file_name_list#[all_task_example_path+task_i+'.csv' for task_i in training_tasks]
+        raw_datasets = load_dataset("csv", data_files=data_files)
+        column_names = raw_datasets["train"].column_names
 
-            with accelerator.main_process_first():
-                tokenized_dataset = raw_datasets.map(
-                    preprocess_function,
-                    batched=True,
-                    num_proc=args.preprocessing_num_workers,
-                    remove_columns=column_names,
-                    load_from_cache_file=not args.overwrite_cache,
-                    desc="Running tokenizer on dataset",
-                )
-            if evolve_step>=2:
-                history_dataset = tokenized_dataset["history_tasks"]
-            train_dataset = tokenized_dataset["train"]
-            if train_task_filename !='IAG':
-                train_neg_dataset = tokenized_dataset["train_neg"]
-            eval_dataset = tokenized_dataset["validation"]#.select(range(200))
-
-            label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
-            data_collator = DataCollatorForSeq2Seq(
-                tokenizer,
-                model=model,
-                label_pad_token_id=label_pad_token_id,
-                pad_to_multiple_of=8 if accelerator.use_fp16 else None,
+        with accelerator.main_process_first():
+            tokenized_train_dataset = raw_datasets.map(
+                preprocess_function,
+                batched=True,
+                num_proc=args.preprocessing_num_workers,
+                remove_columns=column_names,
+                load_from_cache_file=not args.overwrite_cache,
+                desc="Running tokenizer on dataset",
             )
-            if evolve_step>=2:
-                history_dataloader = DataLoader(history_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
-                history_dataloader = accelerator.prepare(history_dataloader)
-                lr_scheduler_history = get_scheduler(
-                    name=args.lr_scheduler_type,
-                    optimizer=history_optimizer,
-                    num_warmup_steps=args.num_warmup_steps,
-                    num_training_steps=args.num_train_epochs*len(history_dataloader),
-                )
-            train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
-            if train_task_filename !='IAG':
-                train_neg_dataloader = DataLoader(train_neg_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
-                train_neg_dataloader = accelerator.prepare(train_neg_dataloader)
-            eval_dataloader = DataLoader(eval_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
+        tokened_dataset = tokenized_train_dataset["train"]
+        real_dataloader = DataLoader(tokened_dataset, shuffle=shuffle_flag, collate_fn=data_collator, batch_size=batch_size)
+        real_dataloader = accelerator.prepare(real_dataloader)
+        return real_dataloader, tokened_dataset
 
-            train_dataloader, eval_dataloader = accelerator.prepare(train_dataloader, eval_dataloader)
-
-            lr_scheduler = get_scheduler(
-                name=args.lr_scheduler_type,
-                optimizer=optimizer,
-                num_warmup_steps=args.num_warmup_steps,
-                num_training_steps=args.num_train_epochs*len(train_dataloader),
-            )
-
-            if evolve_step>=2:
-                logger.info("***** Running history training *****")
-                logger.info(f"  Num examples = {len(history_dataset)}")
-                logger.info(f"  Num Epochs = {args.num_train_epochs}")
-                logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
-                logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-                logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
-                '''just one epoch for history'''
-                model.train()
-                # for step, batch in enumerate(train_dataloader):
-                for step, batch in enumerate(tqdm(history_dataloader, desc="HistoryTraining")):
-                    outputs = model(**batch)
-                    loss = outputs.loss
-                    loss = loss / args.gradient_accumulation_steps
-                    # print('training loss:', loss)
-                    accelerator.backward(loss)
-                    if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                        optimizer.step()
-                        lr_scheduler_history.step()
-                        optimizer.zero_grad()
-
-            if train_task_filename !='IAG':
-                logger.info("***** Running neg training *****")
-                logger.info(f"  Num examples = {len(train_neg_dataset)}")
-                logger.info(f"  Num Epochs = {args.num_train_epochs}")
-                logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
-                logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-                logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
-
-
-                # for epoch in range(args.num_train_epochs):
-                for epoch in trange(args.num_train_epochs, desc="train_epochs"):
-                    model.train()
-                    # for step, batch in enumerate(train_dataloader):
-                    for step, batch in enumerate(tqdm(train_neg_dataloader, desc="NegTraining")):
-                        outputs = model(**batch)
-                        loss = outputs.loss
-                        loss = loss / args.gradient_accumulation_steps
-                        print('training loss:', loss)
-                        accelerator.backward(loss)
-                        if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                            optimizer.step()
-                            lr_scheduler.step()
-                            optimizer.zero_grad()
-
-            logger.info("***** Running training *****")
-            logger.info(f"  Num examples = {len(train_dataset)}")
-            logger.info(f"  Num Epochs = {args.num_train_epochs}")
-            logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
-            logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-            logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
-
-
-            # for epoch in range(args.num_train_epochs):
-            for epoch in trange(args.num_train_epochs, desc="train_epochs"):
-                model.train()
-                # for step, batch in enumerate(train_dataloader):
-                for step, batch in enumerate(tqdm(train_dataloader, desc="Training")):
-                    outputs = model(**batch)
-                    loss = outputs.loss
-                    loss = loss / args.gradient_accumulation_steps
-                    print('training loss:', loss)
-                    accelerator.backward(loss)
-                    if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                        optimizer.step()
-                        lr_scheduler.step()
-                        optimizer.zero_grad()
-
-        # store_model(accelerator, model, args.output_dir, tokenizer)
-
-        '''evaluting'''
-        # csvfile = codecs.open(args.output_dir+'gold_and_pred.csv', 'w', 'utf-8')
-        # fieldnames = ['gold', 'output']
-        # writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        # writer.writeheader()
+    def evaluate(eval_dataloader):
         predictions = []
         references = []
         model.eval()
@@ -579,26 +469,105 @@ def main():
                 decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
                 predictions+=decoded_preds
                 references+=decoded_labels
-                # for i in range(len(decoded_preds)):
-                #     writer.writerow({'gold': decoded_preds[i].strip(), 'output': decoded_labels[i].strip()})
-                # metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-        # csvfile.close()
         result = metric.compute(predictions=predictions, references=references, use_stemmer=True)
-        # result = metric.compute(use_stemmer=True)
-        # Extract a few results from ROUGE
-
         result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
-
         result = {k: round(v, 4) for k, v in result.items()}
-
         rouge_L = result["rougeL"]
+        return rouge_L
 
-        print('rouge_L:', rouge_L)
-        head_task_performance_list.append(rouge_L)
-        accelerator.free_memory()
-    assert len(head_task_performance_list) == repeat_times
-    i_mean_std = computer_mean_std(head_task_performance_list)
-    print(args.target_task, ' performance: ', i_mean_std)
+    all_task_list = load_task_list()
+    delta_performance = defaultdict(list)
+    all_task_example_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_examples_in_CSV/'
+    unseen_tasks_pos_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_pos_instruction_examples_in_CSV/'
+    unseen_tasks_neg_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV/'
+    repeat_times = 2
+    for _ in range(repeat_times):
+        training_tasks = random.sample(all_task_list, args.training_size)
+        '''pretrain 3 epochs on base training tasks'''
+        base_tasks = [all_task_example_path+task_i+'.csv' for task_i in training_tasks]
+        train_dataloader, _ = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size)
+        logger.info("***** Running training on base tasks *****")
+        logger.info(f"  Num examples = {len(train_dataset)}")
+        for _ in trange(args.num_train_epochs, desc="train_epochs"):
+            model.train()
+            for step, batch in enumerate(tqdm(train_dataloader, desc="Training")):
+                outputs = model(**batch)
+                loss = outputs.loss
+                loss = loss / args.gradient_accumulation_steps
+                accelerator.backward(loss)
+                if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                    optimizer.step()
+                    lr_scheduler.step()
+                    optimizer.zero_grad()
+        '''prepare for evolution'''
+        unseen_tasks = [  task_i if task_i not in training_tasks for task_i in all_task_list]
+        for _ in range(repeat_times):
+            '''random choose a target_task'''
+            random.shuffle(unseen_tasks)
+            target_task_id = random.randint(0, len(all_task_list)-args.training_size-40)
+            target_task = unseen_tasks[target_task_id]
+            tasks_until_target = unseen_tasks[:target_task_id+1]
+            assert tasks_until_target[-1] == target_task
+            tasks_after_target = unseen_tasks[target_task_id+1:]
+            assert len(tasks_until_target)+len(tasks_after_target) == len(unseen_tasks)
+
+            '''continual learning on task_sequence_for_evolve'''
+            for evolve_step, train_task_filename in enumerate(tasks_until_target):
+                task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
+                train_dataloader, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
+
+                logger.info("***** Running training until target*****")
+                logger.info(f"  Num examples = {len(train_dataset)}")
+                model.train()
+                # for step, batch in enumerate(train_dataloader):
+                for step, batch in enumerate(tqdm(train_dataloader, desc="EvolvTraining")):
+                    outputs = model(**batch)
+                    loss = outputs.loss
+                    loss = loss / args.gradient_accumulation_steps
+                    # print('training loss:', loss)
+                    accelerator.backward(loss)
+                    if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                        optimizer.step()
+                        lr_scheduler_history.step()
+                        optimizer.zero_grad()
+            '''test on target task'''
+            target_task_filename = all_task_example_path+target_task+'.csv'
+            target_dataloader, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
+            old_rouge_L = evaluate(model, target_dataloader)
+
+            '''keep continual learning on subsequent tasks'''
+            for evolve_step, train_task_filename in enumerate(tasks_after_target):
+                task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
+                train_dataloader, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
+
+                logger.info("***** Running training until target*****")
+                logger.info(f"  Num examples = {len(train_dataset)}")
+                model.train()
+                # for step, batch in enumerate(train_dataloader):
+                for step, batch in enumerate(tqdm(train_dataloader, desc="EvolvTrainingAfterTarget")):
+                    outputs = model(**batch)
+                    loss = outputs.loss
+                    loss = loss / args.gradient_accumulation_steps
+                    # print('training loss:', loss)
+                    accelerator.backward(loss)
+                    if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                        optimizer.step()
+                        lr_scheduler_history.step()
+                        optimizer.zero_grad()
+                if evolve_step+1 in set([1,10,20,30,40]):
+                    '''backward evaluate on target task'''
+
+                    target_task_filename = all_task_example_path+target_task+'.csv'
+                    target_dataloader, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
+                    new_rouge_L = evaluate(model, target_dataloader)
+                    rouge_change = new_rouge_L-old_rouge_L
+                    delta_performance[evolve_step+1].append(rouge_change)
+        tmp_result = compute_for_dict(delta_performance)
+        print('For this set of base tasks: ', tmp_result)
+    final_result = compute_for_dict(delta_performance)
+    print('Final performance: ', final_result)
+
+
 
 
 def store_model(accele, model, output_dir, tokenizer):
@@ -633,7 +602,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_backward_transfer.py --model_name_or_path /home/tup51337/tmp/finetune.after.pretrain.input.to.neg_lr_2e-05epoch_1 --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp3 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --learning_rate_decay 0.5 --target_task AG > log.instructspeak.backward.AG.txt 2>&1
+CUDA_VISIBLE_DEVICES="0,2" accelerate launch baseline.seq.finetune.py --model_name_or_path facebook/bart-base --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 > log.instructspeak.backward.AG.txt 2>&1
 
 
 
