@@ -307,6 +307,13 @@ def concatenate_csv_files(file_list, output_file):
     csvfile.close()
     print('concatenate over')
 
+def print_all_tasks_names_in_list(input_folder):
+    file_set = set(os.listdir(input_folder))
+    name_list = []
+    for fil in file_set:
+        prefix = fil[:fil.find('.json')]
+        name_list.append('"'+prefix+'"')
+    print(','.join(name_list))
 
 if __name__ == '__main__':
     # load_a_single_json_file('/home/tup51337/dataset/Natural-Instructions/test_original_paper/subtask052_multirc_identify_bad_question.json')
@@ -351,4 +358,6 @@ if __name__ == '__main__':
     # concatenate_csv_files(['/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.only.neg.csv'], '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.joint.gold.and.neg.csv')
 
     # generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_pos_instruction_examples_in_CSV')
-    generate_neg_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV')
+    # generate_neg_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV')
+
+    print_all_tasks_names_in_list('/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_examples_in_CSV')
