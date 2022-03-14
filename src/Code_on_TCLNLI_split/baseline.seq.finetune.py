@@ -263,6 +263,12 @@ def parse_args():
         help="Number of updates steps to accumulate before performing a backward/update pass.",
     )
     parser.add_argument(
+        "--repeat_times",
+        type=int,
+        default=5,
+        help="Number of updates steps to accumulate before performing a backward/update pass.",
+    )
+    parser.add_argument(
         "--training_size",
         type=int,
         default=5,
@@ -494,7 +500,7 @@ def main():
     all_task_example_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_examples_in_CSV/'
     unseen_tasks_pos_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_pos_instruction_examples_in_CSV/'
     unseen_tasks_neg_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV/'
-    repeat_times = 2
+    repeat_times = args.repeat_times
     for _ in range(repeat_times):
         '''start with a new model'''
         model = AutoModelForSeq2SeqLM.from_pretrained(
@@ -633,7 +639,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 1000 > log.instructspeak.backward.AG.txt 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 > log.seq.finetune.backward 2>&1
 
 
 
