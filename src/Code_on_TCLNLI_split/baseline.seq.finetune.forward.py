@@ -622,6 +622,8 @@ def main():
                                 optimizer.zero_grad()
                 '''evaluate on target task after this sequence'''
                 model.eval()
+                predictions = []
+                references = []
                 if args.val_max_target_length is None:
                     args.val_max_target_length = args.max_target_length
 
@@ -659,14 +661,19 @@ def main():
 
                         decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-                        metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-                result = metric.compute(use_stemmer=True)
+                        # metric.add_batch(predictions=decoded_preds, references=decoded_labels)
+                        predictions+=decoded_preds
+                        references+=decoded_labels
+
+                result = metric.compute(predictions=predictions, references=references, use_stemmer=True)
+                # result = metric.compute(use_stemmer=True)
                 # Extract a few results from ROUGE
                 result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
                 result = {k: round(v, 4) for k, v in result.items()}
                 rouge_L = result["rougeL"]
                 pair_performance.append(rouge_L)
                 accelerator.free_memory()
+            print('pair_performance:', pair_performance)
             delta_performance.append(pair_performance[1]-pair_performance[0])
 
     final_result = computer_mean_std_given_list(delta_performance)

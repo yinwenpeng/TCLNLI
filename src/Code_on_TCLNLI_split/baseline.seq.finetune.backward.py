@@ -604,6 +604,8 @@ def main():
                             optimizer.zero_grad()
                 if evolve_step in set([target_task_id+ i for i in [0,1,10,20,30,40]]):
                     '''evaluate on target task'''
+                    predictions = []
+                    references = []
                     model.eval()
                     if args.val_max_target_length is None:
                         args.val_max_target_length = args.max_target_length
@@ -642,14 +644,18 @@ def main():
 
                             decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-                            metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-                    result = metric.compute(use_stemmer=True)
-                    # Extract a few results from ROUGE
+                            # metric.add_batch(predictions=decoded_preds, references=decoded_labels)
+                            predictions+=decoded_preds
+                            references+=decoded_labels
+
+                    result = metric.compute(predictions=predictions, references=references, use_stemmer=True)
                     result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
                     result = {k: round(v, 4) for k, v in result.items()}
                     rouge_L = result["rougeL"]
                     target_performance_on_sequence[evolve_step] = rouge_L
                     print('target_task_id:', target_task_id, ' evolve_step: ', evolve_step, ' rouge_L: ', rouge_L)
+                if evolve_step == target_task_id+40:# set([target_task_id+ i for i in [0,1,10,20,30,40]]):
+                    break
             for current_step, current_performance in target_performance_on_sequence.items():
                 if current_step-target_task_id > 0:
                     performance_change_per_round[current_step-target_task_id] = current_performance - target_performance_on_sequence[target_task_id]
@@ -695,7 +701,7 @@ if __name__ == "__main__":
 
 "sequential finetune on instructions"
 
-CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.backward.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 > log.seq.finetune.backward.txt 2>&1
+CUDA_VISIBLE_DEVICES=2 python -u baseline.seq.finetune.backward.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 > log.seq.finetune.backward.txt 2>&1
 
 
 '''
