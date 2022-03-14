@@ -350,4 +350,4 @@ if __name__ == '__main__':
 
     # concatenate_csv_files(['/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.csv', '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.with.only.neg.csv'], '/home/tup51337/dataset/Natural-Instructions/all_training_tasks_in_single_csv.joint.gold.and.neg.csv')
 
-    generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/all_task_pos_instruction_examples_in_CSV')
+    generate_training_examples_from_instruction('/home/tup51337/dataset/Natural-Instructions/train_original_paper', '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_pos_instruction_examples_in_CSV')
