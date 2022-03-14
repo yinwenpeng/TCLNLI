@@ -487,7 +487,7 @@ def main():
         training_tasks = random.sample(all_task_list, args.training_size)
         '''pretrain 3 epochs on base training tasks'''
         base_tasks = [all_task_example_path+task_i+'.csv' for task_i in training_tasks]
-        train_dataloader, lr_scheduler, _ = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size)
+        train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size)
         logger.info("***** Running training on base tasks *****")
         logger.info(f"  Num examples = {len(train_dataset)}")
         for _ in trange(args.num_train_epochs, desc="train_epochs"):
