@@ -509,6 +509,7 @@ def main():
             '''random choose a target_task'''
             random.shuffle(unseen_tasks)
             target_task_id = random.randint(0, len(all_task_list)-args.training_size-40)
+            print('\ntarget_task_id: ', target_task_id, '\n')
             target_task = unseen_tasks[target_task_id]
             tasks_until_target = unseen_tasks[:target_task_id+1]
             assert tasks_until_target[-1] == target_task
