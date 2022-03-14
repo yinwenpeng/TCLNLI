@@ -251,6 +251,12 @@ def parse_args():
         help="Number of updates steps to accumulate before performing a backward/update pass.",
     )
     parser.add_argument(
+        "--training_size",
+        type=int,
+        default=5,
+        help="Number of updates steps to accumulate before performing a backward/update pass.",
+    )
+    parser.add_argument(
         "--lr_scheduler_type",
         type=SchedulerType,
         default="linear",
@@ -685,7 +691,7 @@ if __name__ == "__main__":
 "sequential finetune on instructions"
 # CUDA_VISIBLE_DEVICES=0 python -u baseline_BART_sequential_finetune_backward_transfer.py --model_name_or_path /home/tup51337/tmp/pretrained_BART_on_paper_tasks --max_source_length 1024 --output_dir /home/tup51337/tmp/tmp2 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 2 --learning_rate 2e-5 > log.finetune.backward.txt 2>&1
 
-CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetunetmp.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 
+CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.tmp.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1
 
 
 '''
