@@ -359,26 +359,22 @@ def main():
 
     config = AutoConfig.from_pretrained(args.model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, use_fast=not args.use_slow_tokenizer)
-    model = AutoModelForSeq2SeqLM.from_pretrained(
-            args.model_name_or_path,
-            from_tf=bool(".ckpt" in args.model_name_or_path),
-            config=config)
 
-    model.resize_token_embeddings(len(tokenizer))
-    if model.config.decoder_start_token_id is None:
-        raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
-    no_decay = ["bias", "LayerNorm.weight"]
-    optimizer_grouped_parameters = [
-        {
-            "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-            "weight_decay": args.weight_decay,
-        },
-        {
-            "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-            "weight_decay": 0.0,
-        },
-    ]
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+
+
+
+    # no_decay = ["bias", "LayerNorm.weight"]
+    # optimizer_grouped_parameters = [
+    #     {
+    #         "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+    #         "weight_decay": args.weight_decay,
+    #     },
+    #     {
+    #         "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+    #         "weight_decay": 0.0,
+    #     },
+    # ]
+    # optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
     metric = load_metric("rouge")
     total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
     # model, optimizer = accelerator.prepare(model, optimizer)
@@ -438,14 +434,14 @@ def main():
 
         real_dataloader = DataLoader(tokened_dataset, shuffle=shuffle_flag, collate_fn=data_collator, batch_size=batch_size)
         real_dataloader = accelerator.prepare(real_dataloader)
-        lr_scheduler = get_scheduler(
-            name=args.lr_scheduler_type,
-            optimizer=optimizer,
-            num_warmup_steps=args.num_warmup_steps,
-            num_training_steps=args.num_train_epochs*len(real_dataloader),
-        )
+        # lr_scheduler = get_scheduler(
+        #     name=args.lr_scheduler_type,
+        #     optimizer=optimizer,
+        #     num_warmup_steps=args.num_warmup_steps,
+        #     num_training_steps=args.num_train_epochs*len(real_dataloader),
+        # )
         print(file_name_list, ' data loader prepared over.')
-        return real_dataloader, lr_scheduler, tokened_dataset
+        return real_dataloader, tokened_dataset
 
     def evaluate(eval_dataloader, model):
         predictions = []
@@ -502,18 +498,39 @@ def main():
     unseen_tasks_neg_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV/'
     repeat_times = args.repeat_times
     for _ in range(repeat_times):
+        training_tasks = random.sample(all_task_list, args.training_size)
+        print('Base tasks: ', training_tasks)
+        '''pretrain 3 epochs on base training tasks'''
+        base_tasks = [all_task_example_path+task_i+'.csv' for task_i in training_tasks]
+        train_dataloader, train_dataset = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size, eval_truncate=False)
+
         '''start with a new model'''
         model = AutoModelForSeq2SeqLM.from_pretrained(
                 args.model_name_or_path,
                 from_tf=bool(".ckpt" in args.model_name_or_path),
                 config=config)
-        model, optimizer = accelerator.prepare(model, optimizer)
+        no_decay = ["bias", "LayerNorm.weight"]
+        optimizer_grouped_parameters = [
+            {
+                "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+                "weight_decay": args.weight_decay,
+            },
+            {
+                "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+                "weight_decay": 0.0,
+            },
+        ]
+        optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
 
-        training_tasks = random.sample(all_task_list, args.training_size)
-        print('Base tasks: ', training_tasks)
-        '''pretrain 3 epochs on base training tasks'''
-        base_tasks = [all_task_example_path+task_i+'.csv' for task_i in training_tasks]
-        train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size, eval_truncate=False)
+        model, optimizer = accelerator.prepare(model, optimizer)
+        model.resize_token_embeddings(len(tokenizer))
+        lr_scheduler = get_scheduler(
+            name=args.lr_scheduler_type,
+            optimizer=optimizer,
+            num_warmup_steps=args.num_warmup_steps,
+            num_training_steps=args.num_train_epochs*len(train_dataloader),
+        )
+
         logger.info("***** Running training on base tasks *****")
         logger.info(f"  Num examples = {len(train_dataset)}")
         for _ in trange(args.num_train_epochs, desc="train_epochs"):
@@ -532,11 +549,29 @@ def main():
         unseen_tasks = [  task_i for task_i in all_task_list if task_i not in training_tasks]
         for _ in range(repeat_times):
             '''random choose a target_task'''
+            '''start with a new model'''
             model = AutoModelForSeq2SeqLM.from_pretrained(
                     args.output_dir,
                     from_tf=bool(".ckpt" in args.output_dir),
                     config=config)
+            no_decay = ["bias", "LayerNorm.weight"]
+            optimizer_grouped_parameters = [
+                {
+                    "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+                    "weight_decay": args.weight_decay,
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+                    "weight_decay": 0.0,
+                },
+            ]
+            optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+
             model, optimizer = accelerator.prepare(model, optimizer)
+            model.resize_token_embeddings(len(tokenizer))
+
+
+
             random.shuffle(unseen_tasks)
             target_task_id = random.randint(0, len(all_task_list)-args.training_size-40)
             print('\ntarget_task_id: ', target_task_id, '\n')
@@ -547,7 +582,7 @@ def main():
             assert len(tasks_until_target)+len(tasks_after_target) == len(unseen_tasks)
 
             target_task_filename = all_task_example_path+target_task+'.csv'
-            target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size, eval_truncate=args.eval_truncate)
+            target_dataloader, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size, eval_truncate=args.eval_truncate)
 
             print('Test on target task....')
             base_rouge_L = evaluate(target_dataloader, model)
@@ -556,8 +591,13 @@ def main():
             '''continual learning on task_sequence_for_evolve'''
             for evolve_step, train_task_filename in enumerate(tasks_until_target):
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
-                train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size, eval_truncate=False)
-
+                train_dataloader, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size, eval_truncate=False)
+                lr_scheduler = get_scheduler(
+                    name=args.lr_scheduler_type,
+                    optimizer=optimizer,
+                    num_warmup_steps=args.num_warmup_steps,
+                    num_training_steps=args.num_train_epochs*len(train_dataloader),
+                )
                 print('***** Running training ', evolve_step, ' until target ', len(tasks_until_target), ' ....' )
                 # logger.info("***** Running training until target*****")
                 logger.info(f"  Num examples = {len(train_dataset)}")
