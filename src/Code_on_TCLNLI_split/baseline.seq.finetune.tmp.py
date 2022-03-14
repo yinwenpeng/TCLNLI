@@ -383,7 +383,7 @@ def main():
         '''then, start to prepare data'''
 
         data_files = {}
-        data_files["train"] = base_tasks
+        data_files["train"] = [all_task_example_path+task_i+'.csv' for task_i in base_tasks] #base_tasks
         # data_files["validation"] = test_file
         raw_datasets = load_dataset("csv", data_files=data_files)
         column_names = raw_datasets["train"].column_names
@@ -553,7 +553,7 @@ def main():
             target_performance_on_sequence = {}
             performance_change_per_round = {}
             for evolve_step, new_task_filename in enumerate(unseen_tasks):
-                raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_path+new_task_filename})
+                raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_path+new_task_filename+'.csv'})
                 column_names = raw_datasets["train"].column_names
                 text_column = column_names[0]
                 summary_column = column_names[1]
