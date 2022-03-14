@@ -404,6 +404,7 @@ def main():
     )
 
     def from_file_to_dataLoader(file_name_list=None, shuffle_flag=True, batch_size=None):
+        data_files = {}
         data_files["train"] = file_name_list#[all_task_example_path+task_i+'.csv' for task_i in training_tasks]
         raw_datasets = load_dataset("csv", data_files=data_files)
         column_names = raw_datasets["train"].column_names
