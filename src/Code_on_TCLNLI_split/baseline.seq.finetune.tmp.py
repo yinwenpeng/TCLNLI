@@ -554,7 +554,7 @@ def main():
             target_performance_on_sequence = {}
             performance_change_per_round = {}
             for evolve_step, new_task_filename in enumerate(unseen_tasks):
-                raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_path+new_task_filename+'.csv'})
+                raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_pos_path+new_task_filename+'.csv'})
                 column_names = raw_datasets["train"].column_names
                 text_column = column_names[0]
                 summary_column = column_names[1]
