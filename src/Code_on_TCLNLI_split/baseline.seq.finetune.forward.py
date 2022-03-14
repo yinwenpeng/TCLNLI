@@ -675,7 +675,8 @@ def main():
                 accelerator.free_memory()
             print('pair_performance rouge_L:', pair_performance[1]-pair_performance[0])
             delta_performance.append(pair_performance[1]-pair_performance[0])
-
+            tmp_result = computer_mean_std_given_list(delta_performance)
+            print('tmp performance: ', tmp_result)
     final_result = computer_mean_std_given_list(delta_performance)
     print('Final performance: ', final_result)
 
