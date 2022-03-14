@@ -311,7 +311,7 @@ def print_all_tasks_names_in_list(input_folder):
     file_set = set(os.listdir(input_folder))
     name_list = []
     for fil in file_set:
-        prefix = fil[:fil.find('.json')]
+        prefix = fil[:fil.find('.csv')]
         name_list.append('"'+prefix+'"')
     print(','.join(name_list))
 
