@@ -463,7 +463,7 @@ def main():
                     optimizer.zero_grad()
 
         store_model(accelerator, model, args.output_dir, tokenizer)
-
+        accelerator.free_memory()
         print('\nBase training over, Start evolution part....\n')
         for _ in range(args.repeat_times):
             '''first reload the model and tokenizer for each task stream'''
@@ -657,6 +657,7 @@ def main():
             print('performance_change_per_round:', performance_change_per_round)
             for key, value in performance_change_per_round.items():
                 delta_performance[key].append(value)
+            accelerator.free_memory()
         tmp_result = compute_for_dict(delta_performance)
         print('For this set of unseen tasks: ', tmp_result)
     final_result = compute_for_dict(delta_performance)

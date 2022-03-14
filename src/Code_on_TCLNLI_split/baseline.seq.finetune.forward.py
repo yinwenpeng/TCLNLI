@@ -472,7 +472,7 @@ def main():
                     optimizer.zero_grad()
 
         store_model(accelerator, model, args.output_dir, tokenizer)
-
+        accelerator.free_memory()
         print('\nBase training over, Start evolution part....\n')
         for _ in range(args.repeat_times):
 
@@ -666,6 +666,7 @@ def main():
                 result = {k: round(v, 4) for k, v in result.items()}
                 rouge_L = result["rougeL"]
                 pair_performance.append(rouge_L)
+                accelerator.free_memory()
             delta_performance.append(pair_performance[1]-pair_performance[0])
 
     final_result = computer_mean_std_given_list(delta_performance)
