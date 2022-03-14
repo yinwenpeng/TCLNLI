@@ -51,7 +51,7 @@ from transformers import (
 )
 from transformers.file_utils import get_full_repo_name, is_offline_mode
 from transformers.utils.versions import require_version
-from compute_mean_std import compute_for_dict
+from compute_mean_std import compute_for_dict, computer_mean_std_given_list
 from load_tasks import load_task_list
 from collections import defaultdict
 
@@ -252,6 +252,13 @@ def parse_args():
         default=1,
         help="Number of updates steps to accumulate before performing a backward/update pass.",
     )
+
+    parser.add_argument(
+        "--forward_distance",
+        type=int,
+        default=10,
+        help="Number of updates steps to accumulate before performing a backward/update pass.",
+    )
     parser.add_argument(
         "--training_size",
         type=int,
@@ -349,7 +356,7 @@ def main():
     unseen_tasks_pos_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_pos_instruction_examples_in_CSV/'
     unseen_tasks_neg_path = '/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV/'
     all_task_list = load_task_list()
-    delta_performance = defaultdict(list)
+    delta_performance = []
     for _ in range(args.repeat_times):
         base_tasks = random.sample(all_task_list, args.training_size)
         unseen_tasks = [  task_i for task_i in all_task_list if task_i not in base_tasks]
@@ -466,200 +473,200 @@ def main():
 
         print('\nBase training over, Start evolution part....\n')
         for _ in range(args.repeat_times):
-            '''first reload the model and tokenizer for each task stream'''
-            config = AutoConfig.from_pretrained(args.output_dir)
-            tokenizer = AutoTokenizer.from_pretrained(args.output_dir, use_fast=not args.use_slow_tokenizer)
-            model = AutoModelForSeq2SeqLM.from_pretrained(
-                    args.output_dir,
-                    from_tf=bool(".ckpt" in args.output_dir),
-                    config=config)
 
-            model.resize_token_embeddings(len(tokenizer))
-            if model.config.decoder_start_token_id is None:
-                raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
-            no_decay = ["bias", "LayerNorm.weight"]
-            optimizer_grouped_parameters = [
-                {
-                    "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-                    "weight_decay": args.weight_decay,
-                },
-                {
-                    "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-                    "weight_decay": 0.0,
-                },
-            ]
-            optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
-            metric = load_metric("rouge")
-            total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-            model, optimizer = accelerator.prepare(model, optimizer)
 
-            '''then, start to prepare data'''
+            '''then, start to prepare data, one short sequence, one long sequence'''
             random.shuffle(unseen_tasks)
+            # target_task_id = random.randint(40, len(all_task_list)-args.training_size)
             target_task_id = random.randint(0, len(all_task_list)-args.training_size-40)
             print('\ntarget_task_id: ', target_task_id, '\n')
             target_task = unseen_tasks[target_task_id]
-            target_task_filename = all_task_example_path+target_task+'.csv'
-            target_raw_dataset = load_dataset("csv", data_files={'target':target_task_filename})
-            column_names = target_raw_dataset["target"].column_names
-            def preprocess_function(examples):
-                '''tokenize, padding'''
-                inputs = examples["input"]
-                targets = examples["output"]
-                '''avoid NoneType in target'''
-                targets = [inp  if inp is not None else "none" for inp in targets]
-                model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
-
-                # Setup the tokenizer for targets
-                with tokenizer.as_target_tokenizer():
-                    labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
-
-                # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
-                # padding in the loss.
-                if padding == "max_length" and args.ignore_pad_token_for_loss:
-                    labels["input_ids"] = [
-                        [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
-                    ]
-
-                model_inputs["labels"] = labels["input_ids"]
-                return model_inputs
-
-            with accelerator.main_process_first():
-                tokenized_target_dataset = target_raw_dataset.map(
-                    preprocess_function,
-                    batched=True,
-                    num_proc=args.preprocessing_num_workers,
-                    remove_columns=column_names,
-                    load_from_cache_file=not args.overwrite_cache,
-                    desc="Running tokenizer on target dataset",
-                )
-            target_dataset = tokenized_target_dataset["target"]
-            if args.eval_truncate and args.eval_truncate< len(target_dataset):
-                target_dataset = target_dataset.select(random.sample(range(0, len(target_dataset)), args.eval_truncate))
+            short_task_sequence = unseen_tasks[:target_task_id+1] # include target as the tail task
+            long_task_sequence = unseen_tasks[:target_task_id]+ unseen_tasks[target_task_id+1:target_task_id+1+args.forward_distance]+[target_task]
+            assert len(long_task_sequence) -len(short_task_sequence) == args.forward_distance
 
 
-            label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
-            data_collator = DataCollatorForSeq2Seq(
-                tokenizer,
-                model=model,
-                label_pad_token_id=label_pad_token_id,
-                pad_to_multiple_of=8 if accelerator.use_fp16 else None,
-            )
-
-            target_dataloader = DataLoader(target_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
-            target_dataloader = accelerator.prepare(target_dataloader)
 
 
 
             '''continual learning on task_sequence_for_evolve'''
-            target_performance_on_sequence = {}
-            performance_change_per_round = {}
-            for evolve_step, new_task_filename in enumerate(unseen_tasks):
-                raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_pos_path+new_task_filename+'.csv'})
-                column_names = raw_datasets["train"].column_names
-                text_column = column_names[0]
-                summary_column = column_names[1]
-                max_target_length = args.max_target_length
-                padding = "max_length" if args.pad_to_max_length else False
+            pair_performance = []
+            for each_unseen_tasks in [short_task_sequence, long_task_sequence]:
+                '''first load pretrained model on base tasks'''
+                config = AutoConfig.from_pretrained(args.output_dir)
+                tokenizer = AutoTokenizer.from_pretrained(args.output_dir, use_fast=not args.use_slow_tokenizer)
+                model = AutoModelForSeq2SeqLM.from_pretrained(
+                        args.output_dir,
+                        from_tf=bool(".ckpt" in args.output_dir),
+                        config=config)
+
+                model.resize_token_embeddings(len(tokenizer))
+                if model.config.decoder_start_token_id is None:
+                    raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
+                no_decay = ["bias", "LayerNorm.weight"]
+                optimizer_grouped_parameters = [
+                    {
+                        "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+                        "weight_decay": args.weight_decay,
+                    },
+                    {
+                        "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
+                        "weight_decay": 0.0,
+                    },
+                ]
+                optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+                metric = load_metric("rouge")
+                total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
+                model, optimizer = accelerator.prepare(model, optimizer)
+
+                target_task_filename = all_task_example_path+target_task+'.csv'
+                target_raw_dataset = load_dataset("csv", data_files={'target':target_task_filename})
+                column_names = target_raw_dataset["target"].column_names
+                def preprocess_function(examples):
+                    '''tokenize, padding'''
+                    inputs = examples["input"]
+                    targets = examples["output"]
+                    '''avoid NoneType in target'''
+                    targets = [inp  if inp is not None else "none" for inp in targets]
+                    model_inputs = tokenizer(inputs, max_length=args.max_source_length, padding=padding, truncation=True)
+
+                    # Setup the tokenizer for targets
+                    with tokenizer.as_target_tokenizer():
+                        labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+
+                    # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
+                    # padding in the loss.
+                    if padding == "max_length" and args.ignore_pad_token_for_loss:
+                        labels["input_ids"] = [
+                            [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
+                        ]
+
+                    model_inputs["labels"] = labels["input_ids"]
+                    return model_inputs
+
                 with accelerator.main_process_first():
-                    tokenized_dataset = raw_datasets.map(
+                    tokenized_target_dataset = target_raw_dataset.map(
                         preprocess_function,
                         batched=True,
                         num_proc=args.preprocessing_num_workers,
                         remove_columns=column_names,
                         load_from_cache_file=not args.overwrite_cache,
-                        desc="Running tokenizer on dataset",
+                        desc="Running tokenizer on target dataset",
                     )
-                train_dataset = tokenized_dataset["train"]
+                target_dataset = tokenized_target_dataset["target"]
+                if args.eval_truncate and args.eval_truncate< len(target_dataset):
+                    target_dataset = target_dataset.select(random.sample(range(0, len(target_dataset)), args.eval_truncate))
 
-                train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
-                train_dataloader = accelerator.prepare(train_dataloader)
-                lr_scheduler = get_scheduler(
-                    name=args.lr_scheduler_type,
-                    optimizer=optimizer,
-                    num_warmup_steps=args.num_warmup_steps,
-                    num_training_steps=args.num_train_epochs*len(train_dataloader),
+
+                label_pad_token_id = -100 if args.ignore_pad_token_for_loss else tokenizer.pad_token_id
+                data_collator = DataCollatorForSeq2Seq(
+                    tokenizer,
+                    model=model,
+                    label_pad_token_id=label_pad_token_id,
+                    pad_to_multiple_of=8 if accelerator.use_fp16 else None,
                 )
 
+                target_dataloader = DataLoader(target_dataset, collate_fn=data_collator, batch_size=args.per_device_eval_batch_size)
+                target_dataloader = accelerator.prepare(target_dataloader)
 
-                logger.info("***** Running  new task training *****")
-                print('new_task_filename:', new_task_filename)
-                logger.info(f"  Num examples = {len(train_dataset)}")
-                logger.info(f"  Num Epochs = {args.num_train_epochs}")
-                logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
-                logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-                logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
+                for evolve_step, new_task_filename in enumerate(each_unseen_tasks):
+                    raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_pos_path+new_task_filename+'.csv'})
+                    column_names = raw_datasets["train"].column_names
+                    text_column = column_names[0]
+                    summary_column = column_names[1]
+                    max_target_length = args.max_target_length
+                    padding = "max_length" if args.pad_to_max_length else False
+                    with accelerator.main_process_first():
+                        tokenized_dataset = raw_datasets.map(
+                            preprocess_function,
+                            batched=True,
+                            num_proc=args.preprocessing_num_workers,
+                            remove_columns=column_names,
+                            load_from_cache_file=not args.overwrite_cache,
+                            desc="Running tokenizer on dataset",
+                        )
+                    train_dataset = tokenized_dataset["train"]
+
+                    train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
+                    train_dataloader = accelerator.prepare(train_dataloader)
+                    lr_scheduler = get_scheduler(
+                        name=args.lr_scheduler_type,
+                        optimizer=optimizer,
+                        num_warmup_steps=args.num_warmup_steps,
+                        num_training_steps=args.num_train_epochs*len(train_dataloader),
+                    )
 
 
-                # for epoch in range(args.num_train_epochs):
-                for epoch in trange(args.num_train_epochs, desc="train_epochs"):
-                    model.train()
-                    for step, batch in enumerate(tqdm(train_dataloader, desc="NewTaskTraining")):
-                        outputs = model(**batch)
-                        loss = outputs.loss
-                        loss = loss / args.gradient_accumulation_steps
-                        accelerator.backward(loss)
-                        if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                            optimizer.step()
-                            lr_scheduler.step()
-                            optimizer.zero_grad()
-                if evolve_step in set([target_task_id+ i for i in [0,1,10,20,30,40]]):
-                    '''evaluate on target task'''
-                    model.eval()
-                    if args.val_max_target_length is None:
-                        args.val_max_target_length = args.max_target_length
+                    logger.info("***** Running  new task training *****")
+                    print('new_task_filename:', new_task_filename)
+                    logger.info(f"  Num examples = {len(train_dataset)}")
+                    logger.info(f"  Num Epochs = {args.num_train_epochs}")
+                    logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
+                    logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
+                    logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
 
-                    gen_kwargs = {
-                        "max_length": args.val_max_target_length if args is not None else config.max_length,
-                        "num_beams": args.num_beams,
-                    }
 
-                    for step, batch in enumerate(tqdm(target_dataloader, desc="Evaluating")):
-                        with torch.no_grad():
-                            generated_tokens = accelerator.unwrap_model(model).generate(
-                                batch["input_ids"],
-                                attention_mask=batch["attention_mask"],
-                                **gen_kwargs,
-                            )
+                    # for epoch in range(args.num_train_epochs):
+                    for epoch in trange(args.num_train_epochs, desc="train_epochs"):
+                        model.train()
+                        for step, batch in enumerate(tqdm(train_dataloader, desc="NewTaskTraining")):
+                            outputs = model(**batch)
+                            loss = outputs.loss
+                            loss = loss / args.gradient_accumulation_steps
+                            accelerator.backward(loss)
+                            if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                                optimizer.step()
+                                lr_scheduler.step()
+                                optimizer.zero_grad()
+                '''evaluate on target task after this sequence'''
+                model.eval()
+                if args.val_max_target_length is None:
+                    args.val_max_target_length = args.max_target_length
 
-                            generated_tokens = accelerator.pad_across_processes(
-                                generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
-                            )
-                            labels = batch["labels"]
-                            if not args.pad_to_max_length:
-                                # If we did not pad to max length, we need to pad the labels too
-                                labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
+                gen_kwargs = {
+                    "max_length": args.val_max_target_length if args is not None else config.max_length,
+                    "num_beams": args.num_beams,
+                }
 
-                            generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
-                            labels = accelerator.gather(labels).cpu().numpy()
+                for step, batch in enumerate(tqdm(target_dataloader, desc="Evaluating")):
+                    with torch.no_grad():
+                        generated_tokens = accelerator.unwrap_model(model).generate(
+                            batch["input_ids"],
+                            attention_mask=batch["attention_mask"],
+                            **gen_kwargs,
+                        )
 
-                            if args.ignore_pad_token_for_loss:
-                                # Replace -100 in the labels as we can't decode them.
-                                labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
-                            if isinstance(generated_tokens, tuple):
-                                generated_tokens = generated_tokens[0]
-                            decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-                            decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+                        generated_tokens = accelerator.pad_across_processes(
+                            generated_tokens, dim=1, pad_index=tokenizer.pad_token_id
+                        )
+                        labels = batch["labels"]
+                        if not args.pad_to_max_length:
+                            # If we did not pad to max length, we need to pad the labels too
+                            labels = accelerator.pad_across_processes(batch["labels"], dim=1, pad_index=tokenizer.pad_token_id)
 
-                            decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+                        generated_tokens = accelerator.gather(generated_tokens).cpu().numpy()
+                        labels = accelerator.gather(labels).cpu().numpy()
 
-                            metric.add_batch(predictions=decoded_preds, references=decoded_labels)
-                    result = metric.compute(use_stemmer=True)
-                    # Extract a few results from ROUGE
-                    result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
-                    result = {k: round(v, 4) for k, v in result.items()}
-                    rouge_L = result["rougeL"]
-                    target_performance_on_sequence[evolve_step] = rouge_L
-                    print('target_task_id:', target_task_id, ' evolve_step: ', evolve_step, ' rouge_L: ', rouge_L)
-            for current_step, current_performance in target_performance_on_sequence.items():
-                if current_step-target_task_id > 0:
-                    performance_change_per_round[current_step-target_task_id] = current_performance - target_performance_on_sequence[target_task_id]
-            assert len(performance_change_per_round) ==5
-            print('performance_change_per_round:', performance_change_per_round)
-            for key, value in performance_change_per_round.items():
-                delta_performance[key].append(value)
-        tmp_result = compute_for_dict(delta_performance)
-        print('For this set of unseen tasks: ', tmp_result)
-    final_result = compute_for_dict(delta_performance)
+                        if args.ignore_pad_token_for_loss:
+                            # Replace -100 in the labels as we can't decode them.
+                            labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+                        if isinstance(generated_tokens, tuple):
+                            generated_tokens = generated_tokens[0]
+                        decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+                        decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+                        decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+
+                        metric.add_batch(predictions=decoded_preds, references=decoded_labels)
+                result = metric.compute(use_stemmer=True)
+                # Extract a few results from ROUGE
+                result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
+                result = {k: round(v, 4) for k, v in result.items()}
+                rouge_L = result["rougeL"]
+                pair_performance.append(rouge_L)
+            delta_performance.append(pair_performance[1]-pair_performance[0])
+
+    final_result = computer_mean_std_given_list(delta_performance)
     print('Final performance: ', final_result)
 
 def store_model(accele, model, output_dir, tokenizer):
@@ -694,7 +701,7 @@ if __name__ == "__main__":
 
 "sequential finetune on instructions"
 
-CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5
+CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.forward.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp4 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 --forward_distance 1 
 
 
 '''
