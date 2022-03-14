@@ -425,8 +425,8 @@ def main():
                 desc="Running tokenizer on dataset",
             )
         tokened_dataset = tokenized_train_dataset["train"]
-        if eval_truncate and eval_truncate> len(tokened_dataset):
-            print('eval_truncate:', eval_truncate, ' len(tokened_dataset):', len(tokened_dataset))
+        if eval_truncate and eval_truncate< len(tokened_dataset):
+            # print('eval_truncate:', eval_truncate, ' len(tokened_dataset):', len(tokened_dataset))
             tokened_dataset = tokened_dataset.select(random.sample(range(0, len(tokened_dataset)), eval_truncate))
 
         real_dataloader = DataLoader(tokened_dataset, shuffle=shuffle_flag, collate_fn=data_collator, batch_size=batch_size)
