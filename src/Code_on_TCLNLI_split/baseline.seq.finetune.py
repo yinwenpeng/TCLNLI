@@ -516,6 +516,10 @@ def main():
             tasks_after_target = unseen_tasks[target_task_id+1:]
             assert len(tasks_until_target)+len(tasks_after_target) == len(unseen_tasks)
 
+            target_task_filename = all_task_example_path+target_task+'.csv'
+            target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
+
+
             '''continual learning on task_sequence_for_evolve'''
             for evolve_step, train_task_filename in enumerate(tasks_until_target):
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
@@ -535,8 +539,8 @@ def main():
                         lr_scheduler.step()
                         optimizer.zero_grad()
             print('Test on target task....')
-            target_task_filename = all_task_example_path+target_task+'.csv'
-            target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
+            # target_task_filename = all_task_example_path+target_task+'.csv'
+            # target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
             old_rouge_L = evaluate(target_dataloader)
             print('Initial rouge_L: ', old_rouge_L)
             '''keep continual learning on subsequent tasks'''
@@ -544,7 +548,7 @@ def main():
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
                 train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
 
-                logger.info("***** Running training until target*****")
+                logger.info("***** Running training on subsequent tasks*****")
                 logger.info(f"  Num examples = {len(train_dataset)}")
                 model.train()
                 # for step, batch in enumerate(train_dataloader):
@@ -560,9 +564,6 @@ def main():
                         optimizer.zero_grad()
                 if evolve_step+1 in set([1,10,20,30,40]):
                     '''backward evaluate on target task'''
-
-                    target_task_filename = all_task_example_path+target_task+'.csv'
-                    target_dataloader, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
                     new_rouge_L = evaluate(target_dataloader)
                     rouge_change = new_rouge_L-old_rouge_L
                     delta_performance[evolve_step+1].append(rouge_change)
@@ -606,7 +607,7 @@ if __name__ == "__main__":
 '''
 
 "InstructSpeak sequential finetune on instructions"
-CUDA_VISIBLE_DEVICES="0,2" accelerate launch baseline.seq.finetune.py --model_name_or_path facebook/bart-base --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 > log.instructspeak.backward.AG.txt 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u baseline.seq.finetune.py --model_name_or_path facebook/bart-base --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 > log.instructspeak.backward.AG.txt 2>&1
 
 
 
