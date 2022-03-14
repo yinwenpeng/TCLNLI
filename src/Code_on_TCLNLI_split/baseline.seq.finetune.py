@@ -403,7 +403,7 @@ def main():
         pad_to_multiple_of=8 if accelerator.use_fp16 else None,
     )
 
-    def from_file_to_dataLoader(file_name_list=None, shuffle_flag=True, batch_size=None):
+    def from_file_to_dataLoader(file_name_list=None, shuffle_flag=True, batch_size=None, eval_truncate=1000):
         data_files = {}
         data_files["train"] = file_name_list#[all_task_example_path+task_i+'.csv' for task_i in training_tasks]
         raw_datasets = load_dataset("csv", data_files=data_files)
@@ -419,6 +419,9 @@ def main():
                 desc="Running tokenizer on dataset",
             )
         tokened_dataset = tokenized_train_dataset["train"]
+        if eval_truncate:
+            tokened_dataset = tokened_dataset.select(random.sample(range(0, len(tokened_dataset)), eval_truncate))
+
         real_dataloader = DataLoader(tokened_dataset, shuffle=shuffle_flag, collate_fn=data_collator, batch_size=batch_size)
         real_dataloader = accelerator.prepare(real_dataloader)
         lr_scheduler = get_scheduler(
@@ -496,7 +499,7 @@ def main():
         print('Base tasks: ', training_tasks)
         '''pretrain 3 epochs on base training tasks'''
         base_tasks = [all_task_example_path+task_i+'.csv' for task_i in training_tasks]
-        train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size)
+        train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=base_tasks, shuffle_flag=True, batch_size=args.per_device_base_train_batch_size, eval_truncate=False)
         logger.info("***** Running training on base tasks *****")
         logger.info(f"  Num examples = {len(train_dataset)}")
         for _ in trange(args.num_train_epochs, desc="train_epochs"):
@@ -530,13 +533,13 @@ def main():
             assert len(tasks_until_target)+len(tasks_after_target) == len(unseen_tasks)
 
             target_task_filename = all_task_example_path+target_task+'.csv'
-            target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
+            target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size, eval_truncate=1000)
 
 
             '''continual learning on task_sequence_for_evolve'''
             for evolve_step, train_task_filename in enumerate(tasks_until_target):
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
-                train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
+                train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size, eval_truncate=False)
 
                 print('***** Running training ', evolve_step, ' until target ', len(tasks_until_target), ' ....' )
                 # logger.info("***** Running training until target*****")
@@ -552,15 +555,15 @@ def main():
                         optimizer.step()
                         lr_scheduler.step()
                         optimizer.zero_grad()
+
             print('Test on target task....')
-            # target_task_filename = all_task_example_path+target_task+'.csv'
-            # target_dataloader, _, _ = from_file_to_dataLoader(file_name_list=[target_task_filename], shuffle_flag=False, batch_size=args.per_device_eval_batch_size)
             old_rouge_L = evaluate(target_dataloader, model)
             print('Initial rouge_L: ', old_rouge_L)
+
             '''keep continual learning on subsequent tasks'''
             for evolve_step, train_task_filename in enumerate(tasks_after_target):
                 task_path = unseen_tasks_pos_path+train_task_filename+'.csv'
-                train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size)
+                train_dataloader, lr_scheduler, train_dataset = from_file_to_dataLoader(file_name_list=[task_path], shuffle_flag=True, batch_size=args.per_device_train_batch_size, eval_truncate=False)
 
                 print('***** Running training', evolve_step, ' on subsequent tasks ', len(tasks_after_target), ' ....' )
                 logger.info(f"  Num examples = {len(train_dataset)}")
@@ -580,7 +583,7 @@ def main():
                     '''backward evaluate on target task'''
                     new_rouge_L = evaluate(target_dataloader, model)
                     rouge_change = new_rouge_L-old_rouge_L
-                    print('>>>old_rouge_L:', old_rouge_L, ' new_rouge_L:', new_rouge_L, ' rouge_change:', rouge_change)
+                    print('\n>>>old_rouge_L:', old_rouge_L, ' new_rouge_L:', new_rouge_L, ' rouge_change:', rouge_change, '\n')
                     delta_performance[evolve_step+1].append(rouge_change)
         tmp_result = compute_for_dict(delta_performance)
         print('For this set of base tasks: ', tmp_result)
