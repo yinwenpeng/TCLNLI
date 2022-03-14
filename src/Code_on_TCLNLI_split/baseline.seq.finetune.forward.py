@@ -480,7 +480,7 @@ def main():
             '''then, start to prepare data, one short sequence, one long sequence'''
             random.shuffle(unseen_tasks)
             # target_task_id = random.randint(40, len(all_task_list)-args.training_size)
-            target_task_id = random.randint(0, len(all_task_list)-args.training_size-40)
+            target_task_id = random.randint(0, len(all_task_list)-args.training_size-40-1)
             print('\ntarget_task_id: ', target_task_id, '\n')
             target_task = unseen_tasks[target_task_id]
             short_task_sequence = unseen_tasks[:target_task_id+1] # include target as the tail task
