@@ -7,5 +7,9 @@ def computer_mean_std(value_list):
     print( str(average)+'/'+str(res))
 
 
+def file_rows(filepath):
+    cmd = 'wc -l '+filepath
+    print(os.system(cmd))
 if __name__ == "__main__":
-    computer_mean_std(values)
+    # computer_mean_std(values)
+    file_rows('/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV/subtask017_mctaco_wrong_answer_generation_frequency.neg.csv')
