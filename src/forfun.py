@@ -11,7 +11,7 @@ def computer_mean_std(value_list):
 
 def file_rows(filepath):
     raw_datasets = load_dataset("csv", data_files={'train':filepath})
-    print(len(raw_datasets))
+    print(len(raw_datasets['train']))
 if __name__ == "__main__":
     # computer_mean_std(values)
     file_rows('/home/tup51337/dataset/Natural-Instructions/TCLNLI_split/all_task_neg_instruction_examples_in_CSV/subtask017_mctaco_wrong_answer_generation_frequency.neg.csv')
