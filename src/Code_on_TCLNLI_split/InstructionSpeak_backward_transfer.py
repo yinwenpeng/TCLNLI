@@ -798,7 +798,7 @@ if __name__ == "__main__":
 
 "sequential finetune on instructions"
 
-CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_backward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelbackward --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 --learning_rate_decay 0.5 > log.seq.finetune.backward.txt 2>&1
+CUDA_VISIBLE_DEVICES=3 python -u InstructionSpeak_backward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelbackward --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 --learning_rate_decay 0.5 > log.ourmodel.backward.txt 2>&1
 
 
 '''
