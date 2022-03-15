@@ -359,6 +359,7 @@ def main():
     for _ in range(args.repeat_times):
         base_tasks = random.sample(all_task_list, args.training_size)
         unseen_tasks = [  task_i for task_i in all_task_list if task_i not in base_tasks]
+        unseen_tasks = unseen_tasks[:5]
         # print('Base tasks: ', base_tasks)
         '''first prepare a fresh model and tokenizer'''
         config = AutoConfig.from_pretrained(args.model_name_or_path)
@@ -671,6 +672,7 @@ def main():
             rouge_L = result["rougeL"]
 
             performance_list[id] = rouge_L- performance_list[id]
+        print('performance_list:', performance_list)
         delta_performance+=performance_list
 
 
