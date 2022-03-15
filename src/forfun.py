@@ -2,7 +2,7 @@ import os
 import statistics
 from datasets import load_dataset
 
-values=[-7.437000000000001,0.0,1.9920000000000009,6.0831,-5.0351,3.3999999999999986,2.9804000000000004,16.099999999999998,3.873100000000008,0.614]
+values=[-8.877,0.0,-13.3466, 5.8969000000000005,-5.403600000000001,56.8,2.5105000000000004,72.8,4.631200000000007,40.5246]
 def computer_mean_std(value_list):
     average = round(sum(value_list)/len(value_list), 2)
     res = round(statistics.pstdev(value_list),2)
