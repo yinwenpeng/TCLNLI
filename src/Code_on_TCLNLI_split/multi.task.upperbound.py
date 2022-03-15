@@ -359,7 +359,6 @@ def main():
     for _ in range(args.repeat_times):
         base_tasks = random.sample(all_task_list, args.training_size)
         unseen_tasks = [  task_i for task_i in all_task_list if task_i not in base_tasks]
-        unseen_tasks = unseen_tasks[:5]
         # print('Base tasks: ', base_tasks)
         '''first prepare a fresh model and tokenizer'''
         config = AutoConfig.from_pretrained(args.model_name_or_path)
@@ -712,7 +711,7 @@ if __name__ == "__main__":
 
 "sequential finetune on instructions"
 
-CUDA_VISIBLE_DEVICES=0 python -u multi.task.upperbound.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp2 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=5 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1  > log.ourmodel.backward.txt 2>&1
+CUDA_VISIBLE_DEVICES=0 python -u multi.task.upperbound.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp2 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=5 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5  > log.multitask.txt 2>&1
 
 
 '''
