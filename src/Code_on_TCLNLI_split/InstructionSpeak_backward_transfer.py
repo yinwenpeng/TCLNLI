@@ -600,53 +600,49 @@ def main():
                             optimizer.zero_grad()
                 '''then pretrain on negtive examples'''
                 raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_neg_path+new_task_filename+'.neg.csv'})
-                column_names = raw_datasets["train"].column_names
-                text_column = column_names[0]
-                summary_column = column_names[1]
-                max_target_length = args.max_target_length
-                padding = "max_length" if args.pad_to_max_length else False
-                with accelerator.main_process_first():
-                    tokenized_dataset = raw_datasets.map(
-                        preprocess_function,
-                        batched=True,
-                        num_proc=args.preprocessing_num_workers,
-                        remove_columns=column_names,
-                        load_from_cache_file=not args.overwrite_cache,
-                        desc="Running tokenizer on dataset",
+                if len(raw_datasets['train'])>0:
+                    column_names = raw_datasets["train"].column_names
+                    text_column = column_names[0]
+                    summary_column = column_names[1]
+                    max_target_length = args.max_target_length
+                    padding = "max_length" if args.pad_to_max_length else False
+                    with accelerator.main_process_first():
+                        tokenized_dataset = raw_datasets.map(
+                            preprocess_function,
+                            batched=True,
+                            num_proc=args.preprocessing_num_workers,
+                            remove_columns=column_names,
+                            load_from_cache_file=not args.overwrite_cache,
+                            desc="Running tokenizer on dataset",
+                        )
+                    train_dataset = tokenized_dataset["train"]
+
+                    train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
+                    train_dataloader = accelerator.prepare(train_dataloader)
+                    neg_lr_scheduler = get_scheduler(
+                        name=args.lr_scheduler_type,
+                        optimizer=optimizer,
+                        num_warmup_steps=args.num_warmup_steps,
+                        num_training_steps=args.num_train_epochs*len(train_dataloader),
                     )
-                train_dataset = tokenized_dataset["train"]
-
-                train_dataloader = DataLoader(train_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
-                train_dataloader = accelerator.prepare(train_dataloader)
-                lr_scheduler = get_scheduler(
-                    name=args.lr_scheduler_type,
-                    optimizer=optimizer,
-                    num_warmup_steps=args.num_warmup_steps,
-                    num_training_steps=args.num_train_epochs*len(train_dataloader),
-                )
 
 
-                logger.info("***** Running  new task training *****")
-                print('new_task_filename:', new_task_filename)
-                logger.info(f"  Num examples = {len(train_dataset)}")
-                logger.info(f"  Num Epochs = {args.num_train_epochs}")
-                logger.info(f"  Instantaneous batch size per device = {args.per_device_train_batch_size}")
-                logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-                logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
+                    logger.info("***** Running  neg examples of new task training *****")
+                    print('new_task_filename:', new_task_filename)
+                    logger.info(f"  Num examples = {len(train_dataset)}")
 
-
-                # for epoch in range(args.num_train_epochs):
-                for epoch in trange(args.num_train_epochs, desc="train_epochs"):
-                    model.train()
-                    for step, batch in enumerate(tqdm(train_dataloader, desc="NewTaskTraining")):
-                        outputs = model(**batch)
-                        loss = outputs.loss
-                        loss = loss / args.gradient_accumulation_steps
-                        accelerator.backward(loss)
-                        if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                            optimizer.step()
-                            lr_scheduler.step()
-                            optimizer.zero_grad()
+                    # for epoch in range(args.num_train_epochs):
+                    for epoch in trange(args.num_train_epochs, desc="train_epochs"):
+                        model.train()
+                        for step, batch in enumerate(tqdm(train_dataloader, desc="NegExampleTraining")):
+                            outputs = model(**batch)
+                            loss = outputs.loss
+                            loss = loss / args.gradient_accumulation_steps
+                            accelerator.backward(loss)
+                            if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                                optimizer.step()
+                                neg_lr_scheduler.step()
+                                optimizer.zero_grad()
                 '''finally train on positive examples'''
                 raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_pos_path+new_task_filename+'.csv'})
                 column_names = raw_datasets["train"].column_names
@@ -795,7 +791,7 @@ if __name__ == "__main__":
 
 "sequential finetune on instructions"
 
-CUDA_VISIBLE_DEVICES=2 python -u baseline.seq.finetune.backward.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/tmp3 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 > log.seq.finetune.backward.txt 2>&1
+CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_backward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelbackward --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 > log.seq.finetune.backward.txt 2>&1
 
 
 '''
