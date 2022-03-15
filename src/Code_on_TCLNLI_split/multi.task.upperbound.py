@@ -384,6 +384,7 @@ def main():
             },
         ]
         optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+        metric = load_metric("rouge")
         total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
         model, optimizer = accelerator.prepare(model, optimizer)
 
