@@ -174,6 +174,12 @@ def parse_args():
         help="If passed, pad all samples to `max_length`. Otherwise, dynamic padding is used.",
     )
     parser.add_argument(
+        "--learning_rate_decay",
+        type=float,
+        default=0.5,
+        help="Initial learning rate (after the potential warmup period) to use.",
+    )
+    parser.add_argument(
         "--model_name_or_path",
         type=str,
         help="Path to pretrained model or model identifier from huggingface.co/models.",
@@ -488,10 +494,11 @@ def main():
                     "weight_decay": 0.0,
                 },
             ]
+            history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
             optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
             metric = load_metric("rouge")
             total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-            model, optimizer = accelerator.prepare(model, optimizer)
+            model, optimizer, history_optimizer = accelerator.prepare(model, optimizer, history_optimizer)
 
             '''then, start to prepare data'''
             random.shuffle(unseen_tasks)
@@ -578,14 +585,14 @@ def main():
                     history_dataloader = accelerator.prepare(history_dataloader)
                     history_lr_scheduler = get_scheduler(
                         name=args.lr_scheduler_type,
-                        optimizer=optimizer,
+                        optimizer=history_optimizer,
                         num_warmup_steps=args.num_warmup_steps,
                         num_training_steps=args.num_train_epochs*len(history_dataloader),
                     )
 
 
                     logger.info("***** Running  history task training *****")
-                    print('history_tasks:', history_tasks)
+                    # print('history_tasks:', history_tasks)
                     logger.info(f"  Num examples = {len(tokenized_history_dataset)}")
 
                     model.train()
@@ -595,9 +602,9 @@ def main():
                         loss = loss / args.gradient_accumulation_steps
                         accelerator.backward(loss)
                         if step % args.gradient_accumulation_steps == 0 or step == len(history_dataloader) - 1:
-                            optimizer.step()
+                            history_optimizer.step()
                             history_lr_scheduler.step()
-                            optimizer.zero_grad()
+                            history_optimizer.zero_grad()
                 '''then pretrain on negtive examples'''
                 raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_neg_path+new_task_filename+'.neg.csv'})
                 if len(raw_datasets['train'])>0:
@@ -791,7 +798,7 @@ if __name__ == "__main__":
 
 "sequential finetune on instructions"
 
-CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_backward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelbackward --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 > log.seq.finetune.backward.txt 2>&1
+CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_backward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelbackward --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 --learning_rate_decay 0.5 > log.seq.finetune.backward.txt 2>&1
 
 
 '''
