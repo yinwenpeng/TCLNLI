@@ -494,11 +494,11 @@ def main():
                     "weight_decay": 0.0,
                 },
             ]
-            history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
+            # history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
             optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
             metric = load_metric("rouge")
             total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-            model, optimizer, history_optimizer = accelerator.prepare(model, optimizer, history_optimizer)
+            model, optimizer = accelerator.prepare(model, optimizer)
 
             '''then, start to prepare data'''
             random.shuffle(unseen_tasks)
@@ -583,9 +583,9 @@ def main():
 
                     history_dataloader = DataLoader(tokenized_history_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
                     history_dataloader = accelerator.prepare(history_dataloader)
-                    history_lr_scheduler = get_scheduler(
+                    lr_scheduler = get_scheduler(
                         name=args.lr_scheduler_type,
-                        optimizer=history_optimizer,
+                        optimizer=optimizer,
                         num_warmup_steps=args.num_warmup_steps,
                         num_training_steps=args.num_train_epochs*len(history_dataloader),
                     )
@@ -600,11 +600,12 @@ def main():
                         outputs = model(**batch)
                         loss = outputs.loss
                         loss = loss / args.gradient_accumulation_steps
+                        loss *= (1.0/len(history_tasks))
                         accelerator.backward(loss)
                         if step % args.gradient_accumulation_steps == 0 or step == len(history_dataloader) - 1:
-                            history_optimizer.step()
-                            history_lr_scheduler.step()
-                            history_optimizer.zero_grad()
+                            optimizer.step()
+                            lr_scheduler.step()
+                            optimizer.zero_grad()
                 '''then pretrain on negtive examples'''
                 raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_neg_path+new_task_filename+'.neg.csv'})
                 if len(raw_datasets['train'])>0:

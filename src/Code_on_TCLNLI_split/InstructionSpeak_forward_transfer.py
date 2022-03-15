@@ -519,11 +519,11 @@ def main():
                         "weight_decay": 0.0,
                     },
                 ]
-                history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
+                # history_optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate*args.learning_rate_decay)
                 optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
                 metric = load_metric("rouge")
                 total_batch_size = args.per_device_train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
-                model, optimizer, history_optimizer = accelerator.prepare(model, optimizer, history_optimizer)
+                model, optimizer = accelerator.prepare(model, optimizer)
 
                 target_task_filename = all_task_example_path+target_task+'.csv'
                 target_raw_dataset = load_dataset("csv", data_files={'target':target_task_filename})
@@ -598,9 +598,9 @@ def main():
 
                         history_dataloader = DataLoader(tokenized_history_dataset, shuffle=True, collate_fn=data_collator, batch_size=args.per_device_train_batch_size)
                         history_dataloader = accelerator.prepare(history_dataloader)
-                        history_lr_scheduler = get_scheduler(
+                        lr_scheduler = get_scheduler(
                             name=args.lr_scheduler_type,
-                            optimizer=history_optimizer,
+                            optimizer=optimizer,
                             num_warmup_steps=args.num_warmup_steps,
                             num_training_steps=args.num_train_epochs*len(history_dataloader),
                         )
@@ -614,11 +614,12 @@ def main():
                             outputs = model(**batch)
                             loss = outputs.loss
                             loss = loss / args.gradient_accumulation_steps
+                            loss *= (1.0/len(history_tasks))
                             accelerator.backward(loss)
                             if step % args.gradient_accumulation_steps == 0 or step == len(history_dataloader) - 1:
-                                history_optimizer.step()
-                                history_lr_scheduler.step()
-                                history_optimizer.zero_grad()
+                                optimizer.step()
+                                lr_scheduler.step()
+                                optimizer.zero_grad()
                     '''then pretrain on negtive examples'''
                     raw_datasets = load_dataset("csv", data_files={'train':unseen_tasks_neg_path+new_task_filename+'.neg.csv'})
                     if len(raw_datasets['train'])>0:
@@ -801,7 +802,14 @@ if __name__ == "__main__":
 
 "sequential finetune on instructions"
 
-CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_forward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelforward --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 1 --learning_rate 5e-5 --training_size 1 --eval_truncate 100 --repeat_times 1 --forward_distance 1 --learning_rate_decay 0.5 > log.seq.finetune.forward.g1.txt 2>&1
+gpu:
+CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_forward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelforward.g1 --forward_distance 1 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 --learning_rate_decay 0.5 > log.ourmodel.forward.g1.txt 2>&1
+
+dgx-1
+CUDA_VISIBLE_DEVICES=1 python -u InstructionSpeak_forward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelforward.g10 --forward_distance 10 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 --learning_rate_decay 0.5 > log.ourmodel.forward.g10.txt 2>&1
+CUDA_VISIBLE_DEVICES=2 python -u InstructionSpeak_forward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelforward.g20 --forward_distance 20 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 --learning_rate_decay 0.5 > log.ourmodel.forward.g20.txt 2>&1
+CUDA_VISIBLE_DEVICES=3 python -u InstructionSpeak_forward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelforward.g30 --forward_distance 30 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 --learning_rate_decay 0.5 > log.ourmodel.forward.g30.txt 2>&1
+CUDA_VISIBLE_DEVICES=4 python -u InstructionSpeak_forward_transfer.py --model_name_or_path facebook/bart-base --output_dir /home/tup51337/tmp/ourmodelforward.g40 --forward_distance 40 --max_source_length 1024 --per_device_base_train_batch_size=5 --per_device_train_batch_size=2 --per_device_eval_batch_size=24 --num_train_epochs 3 --learning_rate 5e-5 --training_size 5 --eval_truncate 1000 --repeat_times 5 --learning_rate_decay 0.5 > log.ourmodel.forward.g40.txt 2>&1
 
 
 '''
